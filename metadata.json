@@ -1,0 +1,6 @@
+{
+  "name": "AI Customer Support Platform",
+  "description": "A mobile-first SaaS dashboard for businesses to configure, train, and manage their AI support agents.",
+  "requestFramePermissions": [],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
