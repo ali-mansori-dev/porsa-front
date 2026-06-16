@@ -1,875 +1,593 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  GraduationCap,
-  Wrench,
-  ShoppingBag,
-  Bot,
-  Sparkles,
-  Plus,
-  Trash2,
+  GraduationHat01,
+  Tool01,
   Check,
   ChevronRight,
   ChevronLeft,
-  Calendar,
-  Layers,
-  HelpCircle,
-  FileSpreadsheet,
-  Settings
-} from 'lucide-react';
-import { api } from '../services/api';
-import { Business, BusinessType, ResponseStyle, CustomQA } from '../types';
+  LayersThree01,
+  File01,
+  Plus,
+  RefreshCw01,
+  MessageSquare01,
+  Pencil01,
+  XClose,
+  Trash01,
+  AlertTriangle,
+} from '@untitled-ui/icons-react';
+import { Bot, Sparkles } from 'lucide-react';
+import { api, aiSuggestQuestions } from '../services/api';
+import { Business, BusinessType, ResponseStyle } from '../types';
+import { Button, Input, Textarea } from '../components/ui';
+
+interface AiQuestion {
+  id: string;
+  question: string;
+  answer: string;
+  placeholder: string;
+  fromAi: boolean;
+}
+
+const EDUCATION_FIELDS = [
+  { label: 'برنامه‌نویسی', icon: '💻' },
+  { label: 'زبان', icon: '🌍' },
+  { label: 'ریاضی', icon: '📐' },
+  { label: 'هنر و طراحی', icon: '🎨' },
+  { label: 'موسیقی', icon: '🎵' },
+  { label: 'آمادگی کنکور', icon: '📚' },
+  { label: 'ورزش', icon: '⚽' },
+  { label: 'سایر', icon: '✏️' },
+];
+
+const SERVICE_FIELDS = [
+  { label: 'دندانپزشکی', icon: '🦷' },
+  { label: 'آرایشگاه', icon: '💇' },
+  { label: 'تعمیرات', icon: '🔧' },
+  { label: 'پزشکی', icon: '🏥' },
+  { label: 'مشاوره', icon: '🤝' },
+  { label: 'رستوران / کافه', icon: '☕' },
+  { label: 'باشگاه ورزشی', icon: '🏋️' },
+  { label: 'سایر', icon: '⚙️' },
+];
 
 export default function Onboarding() {
   const navigate = useNavigate();
   const [step, setStep] = useState(1);
 
-  // STEP 1: Basics (Farsi preloaded values)
   const [name, setName] = useState('');
-  const [businessType, setBusinessType] = useState<BusinessType>('education');
-  const [field, setField] = useState('');
+  const [businessType, setBusinessType] = useState<'education' | 'services'>('education');
   const [brandColor, setBrandColor] = useState('#2563eb');
-  const [contact, setContact] = useState('');
-  const [workingHours, setWorkingHours] = useState('شنبه تا پنجشنبه ۹:۰۰ صبح الی ۱۸:۰۰ عصر');
-  const [welcomeMessage, setWelcomeMessage] = useState('سلام! چطور می‌توانم امروز به شما کمک کنم؟');
-
-  // STEP 2: AI Settings
-  const [responseStyle, setResponseStyle] = useState<ResponseStyle>('friendly');
-  const [maxTokens, setMaxTokens] = useState(1000);
-
-  // STEP 3: Knowledge details (per vertical defaults - localized)
-  // Education fields
-  const [eduCourses, setEduCourses] = useState('آماده‌سازی آزمون آیلتس فشرده (آکادمیک و عمومی)، تقویت مکالمه انگلیسی کاربری، دوره فونیکس کودکان');
-  const [eduSchedule, setEduSchedule] = useState('عصر روزهای زوج (شنبه/دوشنبه/چهارشنبه) از ساعت ۱۸:۰۰ الی ۲۰:۳۰، پنجشنبه‌ها از ساعت ۹:۰۰ صبح الی ۱۳:۳۰ ظهر');
-  const [eduEnrollment, setEduEnrollment] = useState('۱. انجام آزمون تعیین سطح آنلاین. ۲. مصاحبه شفاهی آیلتس توسط سوپروایزر. ۳. پرداخت شهریه و تکمیل ثبت‌نام.');
-  const [eduTuition, setEduTuition] = useState('دوره آمادگی آیلتس: ۲,۵۰۰,۰۰۰ تومان برای هر ترم (۱۲ هفته). دوره‌های فونیکس: ۱,۲۰۰,۰۰۰ تومان.');
-  const [eduFormat, setEduFormat] = useState<'online' | 'inperson' | 'hybrid'>('hybrid');
-
-  // Service fields
-  const [serServices, setSerServices] = useState('جرم‌گیری تخصصی دندان، عصب‌کشی دندان، ایمپلنت دیجیتال، زیبایی کامپوزیت');
-  const [serProcess, setSerProcess] = useState('ثبت رزرو مستقیم از تقویم سایت یا ارسال شماره تماس برای هماهنگی منشی تلفنی.');
-  const [serCancel, setSerCancel] = useState('امکان لغو نوبت تا ۲۴ ساعت قبل بدون جریمه. لغو دیرهنگام شامل جریمه ۲۰٪ هزینه نوبت خواهد شد.');
-  const [serSpecialists, setSerSpecialists] = useState('دکتر محمد راد (متخصص ارتودنسی)، دکتر مریم شجاعی (جراح و دندانپزشک عمومی)');
-
-  // Retail fields
-  const [retProducts, setRetProducts] = useState('شوینده‌های گیاهی صورت، سرم‌های آبرسان پوست، کرم‌های ترمیم‌کننده شب');
-  const [retShipping, setRetShipping] = useState('ارسال رایگان سراسری برای خریدهای بالای ۵۰۰,۰۰۰ تومان. ارسال معمولی ۳ روز کاری زمان می‌برد.');
-  const [retReturn, setRetReturn] = useState('قوانین ۳۰ روز مرجوعی برای محصولات پلمب‌شده پوستی و آرایشی در بسته‌بندی اولیه خود.');
-  const [retPayments, setRetPayments] = useState({
-    card: true,
-    cash: false,
-    transfer: true,
-    other: false
-  });
-
-  // Common custom Q&As
-  const [qas, setQas] = useState<Omit<CustomQA, 'id'>[]>([]);
-
-  // Step state validations
   const [basicsError, setBasicsError] = useState('');
+
+  const [selectedField, setSelectedField] = useState('');
+  const [customField, setCustomField] = useState('');
+  const [fieldError, setFieldError] = useState('');
+
+  const [aiQuestions, setAiQuestions] = useState<AiQuestion[]>([]);
+  const [isLoadingQuestions, setIsLoadingQuestions] = useState(false);
+  const [questionsLoaded, setQuestionsLoaded] = useState(false);
+  const [editingAnswerId, setEditingAnswerId] = useState<string | null>(null);
+  const [tempAnswer, setTempAnswer] = useState('');
+
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    // Check auth
-    const token = localStorage.getItem('access_token');
-    if (!token) {
-      navigate('/auth');
-    }
+    if (!localStorage.getItem('access_token')) navigate('/auth');
   }, [navigate]);
 
-  const handleNext = () => {
+  const getEffectiveField = () => customField.trim() || selectedField;
+
+  const loadAiQuestions = async () => {
+    const field = getEffectiveField();
+    if (!field) return;
+    setIsLoadingQuestions(true);
+    setQuestionsLoaded(false);
+    try {
+      const suggestions = await aiSuggestQuestions(businessType, field);
+      setAiQuestions(suggestions.map((s, idx) => ({
+        id: 'ai_' + idx,
+        question: s.question,
+        answer: '',
+        placeholder: s.placeholder,
+        fromAi: true,
+      })));
+      setQuestionsLoaded(true);
+    } catch {
+      setAiQuestions([]);
+      setQuestionsLoaded(true);
+    } finally {
+      setIsLoadingQuestions(false);
+    }
+  };
+
+  const handleNext = async () => {
     if (step === 1) {
-      if (!name) {
-        setBasicsError('نام تجاری یا قانونی کسب‌وکار الزامی است.');
-        return;
-      }
+      if (!name.trim()) { setBasicsError('نام کسب‌وکار الزامی است.'); return; }
       setBasicsError('');
     }
-    setStep((prev) => Math.min(prev + 1, 4));
+    if (step === 2) {
+      if (!getEffectiveField()) { setFieldError('لطفاً حوزه فعالیت خود را مشخص کنید.'); return; }
+      setFieldError('');
+      await loadAiQuestions();
+    }
+    setStep(p => Math.min(p + 1, 4));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
   const handleBack = () => {
-    setStep((prev) => Math.max(prev - 1, 1));
+    setStep(p => Math.max(p - 1, 1));
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleAddField = () => {
-    setQas([...qas, { question: '', answer: '' }]);
+  const handleDeleteQuestion = (id: string) => setAiQuestions(p => p.filter(q => q.id !== id));
+
+  const handleStartEdit = (q: AiQuestion) => { setEditingAnswerId(q.id); setTempAnswer(q.answer); };
+  const handleSaveAnswer = (id: string) => {
+    setAiQuestions(p => p.map(q => q.id === id ? { ...q, answer: tempAnswer } : q));
+    setEditingAnswerId(null);
+    setTempAnswer('');
+  };
+  const handleCancelEdit = () => { setEditingAnswerId(null); setTempAnswer(''); };
+
+  const handleAddCustomQuestion = () => {
+    const newQ: AiQuestion = {
+      id: 'custom_' + Date.now(),
+      question: '',
+      answer: '',
+      placeholder: 'پاسخ خود را اینجا بنویسید...',
+      fromAi: false,
+    };
+    setAiQuestions(p => [...p, newQ]);
+    setTimeout(() => { setEditingAnswerId(newQ.id); setTempAnswer(''); }, 50);
   };
 
-  const handleUpdateField = (index: number, fld: 'question' | 'answer', text: string) => {
-    const list = [...qas];
-    list[index][fld] = text;
-    setQas(list);
-  };
-
-  const handleRemoveField = (index: number) => {
-    setQas(qas.filter((_, idx) => idx !== index));
-  };
+  const handleUpdateCustomQuestion = (id: string, question: string) =>
+    setAiQuestions(p => p.map(q => q.id === id ? { ...q, question } : q));
 
   const handleSubmit = async () => {
     setIsSubmitting(true);
     try {
-       // 1. Save core business specifications
-      const bObj = await api.business.create({
+      const field = getEffectiveField();
+      await api.business.create({
         name,
-        type: businessType,
+        type: businessType as BusinessType,
         field,
         brandColor,
-        contact,
-        workingHours,
-        welcomeMessage,
-        responseStyle,
-        maxTokens,
+        contact: '',
+        workingHours: 'شنبه تا پنجشنبه ۹:۰۰ تا ۱۸:۰۰',
+        welcomeMessage: `سلام! به ${name} خوش آمدید. چطور می‌توانم کمکتان کنم؟`,
+        responseStyle: 'friendly' as ResponseStyle,
+        maxTokens: 1000,
       });
-
-      // 2. Format details depending on selected vertical
-      const details: any[] = [];
-      if (businessType === 'education') {
-        details.push(
-          { key: 'courses_offered', title: 'دوره‌های آموزشی ما', value: eduCourses },
-          { key: 'schedule_timing', title: 'ساعات زمانی برگزاری کلاس‌ها', value: eduSchedule },
-          { key: 'enrollment_process', title: 'فرآیند ثبت‌نام و پذیرش', value: eduEnrollment },
-          { key: 'tuition_fees', title: 'شهریه دوره‌ها و پرداخت', value: eduTuition },
-          { key: 'format', title: 'شیوه برگزاری کلاس‌ها', value: eduFormat === 'online' ? 'آنلاین' : eduFormat === 'inperson' ? 'حضوری' : 'ترکیبی (حضوری و آنلاین)' }
-        );
-      } else if (businessType === 'services') {
-        details.push(
-          { key: 'services_offered', title: 'خدمات ارائه‌شده', value: serServices },
-          { key: 'appointment_booking_process', title: 'فرآیند رزرو وقت نوبت', value: serProcess },
-          { key: 'cancellation_policy', title: 'مقررات لغو نوبت', value: serCancel },
-          { key: 'staff_specialists', title: 'پزشکان و کارشناسان مرکز', value: serSpecialists }
-        );
-      } else if (businessType === 'retail') {
-        const methods: string[] = [];
-        if (retPayments.card) methods.push('درگاه پرداخت اینترنتی / کارت');
-        if (retPayments.cash) methods.push('پرداخت نقدی در محل');
-        if (retPayments.transfer) methods.push('کارت به کارت / حواله پایا');
-        if (retPayments.other) methods.push('سایر شیوه‌های پرداخت');
-        
-        details.push(
-          { key: 'products_categories', title: 'دسته‌بندی محصولات', value: retProducts },
-          { key: 'shipping_delivery', title: 'تعرفه و شیوه‌های ارسال کالا', value: retShipping },
-          { key: 'return_refund_policy', title: 'قوانین بازگردانی کالا و مرجوعی', value: retReturn },
-          { key: 'payment_methods', title: 'روش‌های پرداخت پذیرفته‌شده', value: methods.join('، ') }
-        );
-      }
-
-      await api.details.saveAll(details);
-
-      // 3. Save Custom Q&A list items
-      for (const item of qas) {
-        if (item.question.trim() && item.answer.trim()) {
-          await api.qas.add(item);
-        }
-      }
-
-      // 4. Redirect to home dashboard
+      const details = aiQuestions
+        .filter(q => q.question.trim() && q.answer.trim())
+        .map((q, idx) => ({ key: `ai_qa_${idx}`, title: q.question, value: q.answer }));
+      if (details.length > 0) await api.details.saveAll(details);
       navigate('/dashboard');
-    } catch (err) {
-      console.error('Failed to complete setup configuration', err);
-      alert('خطایی در حین ثبت و راه‌اندازی تنظیمات محیط کاربری رخ داد.');
+    } catch {
+      alert('خطایی رخ داد. لطفاً دوباره تلاش کنید.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
+  const answeredCount = aiQuestions.filter(q => q.answer.trim()).length;
+  const totalCount = aiQuestions.length;
+
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col font-sans mb-10 text-right" dir="rtl">
-      
-      {/* Dynamic progression headers: sticky top element */}
-      <header className="sticky top-0 bg-white border-b border-slate-200 z-30 shadow-sm flex flex-col pt-safe">
+    <div className="min-h-screen bg-slate-50 flex flex-col text-right" dir="rtl">
+
+      {/* Header */}
+      <header className="sticky top-0 bg-white border-b border-slate-200 z-30 shadow-sm">
         <div className="px-4 py-3 flex items-center justify-between max-w-2xl mx-auto w-full">
           <div className="flex items-center gap-1.5">
             <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center gap-0.5 shadow-md shadow-blue-500/15 relative shrink-0">
-              <div className="absolute bottom-1 right-0 w-1.5 h-1.5 bg-blue-600 rounded-bl-full transform translate-x-0.5 translate-y-0.5"></div>
-              <span className="w-1 h-1 rounded-full bg-white"></span>
-              <span className="w-1 h-1 rounded-full bg-white"></span>
-              <span className="w-1 h-1 rounded-full bg-white"></span>
+              <div className="absolute bottom-1 right-0 w-1.5 h-1.5 bg-blue-600 rounded-bl-full transform translate-x-0.5 translate-y-0.5" />
+              <span className="w-1 h-1 rounded-full bg-white" />
+              <span className="w-1 h-1 rounded-full bg-white" />
+              <span className="w-1 h-1 rounded-full bg-white" />
             </div>
             <span className="font-extrabold text-xs tracking-tight text-slate-800">راه‌اندازی پرسا</span>
           </div>
-          <span className="text-[11px] font-bold text-slate-450 uppercase font-mono">مرحله {step} از ۴</span>
+          <span className="text-[11px] font-bold text-slate-400 font-mono">مرحله {step} از ۴</span>
         </div>
-        {/* Fill colored bar */}
         <div className="w-full bg-slate-100 h-1">
-          <div
-            className="bg-blue-600 h-full transition-all duration-300"
-            style={{ width: `${(step / 4) * 100}%` }}
-          />
+          <div className="bg-blue-600 h-full transition-all duration-500" style={{ width: `${(step / 4) * 100}%` }} />
         </div>
       </header>
 
-      {/* Main step container panel */}
-      <main className="flex-1 max-w-xl mx-auto w-full px-4 py-8 mb-24 space-y-6">
-        
-        {/* Title guidelines */}
+      <main className="flex-1 max-w-xl mx-auto w-full px-4 py-8 mb-28 space-y-6">
+
         <div className="space-y-1">
           <h1 className="text-xl sm:text-2xl font-extrabold text-slate-900 leading-snug">
             {step === 1 && 'درباره کسب‌وکار خود بگویید'}
-            {step === 2 && 'تنظیم سبک رفتار هوش مصنوعی'}
-            {step === 3 && 'ایجاد پایگاه دانش دستیار'}
-            {step === 4 && 'بررسی نهایی اطلاعات پیش‌نویس'}
+            {step === 2 && 'دقیقاً چه کاری انجام می‌دهید؟'}
+            {step === 3 && 'سوالات پیشنهادی هوش مصنوعی'}
+            {step === 4 && 'بررسی نهایی اطلاعات'}
           </h1>
           <p className="text-xs text-slate-400">
-            {step === 1 && 'مشخصات اولیه را برای بومی‌سازی دقیق پاسخ‌های دستیار هوشمند وارد کنید.'}
-            {step === 2 && 'لحن صحبت دستیار را سفارشی‌سازی کرده و سقف طول پاسخ‌ها را تعیین کنید.'}
-            {step === 3 && 'اطلاعات دوره‌ها، شرایط خدمات یا مرجوعی کالا را برای آموزش به هوش مصنوعی ثبت کنید.'}
-            {step === 4 && 'مرور متغیرها و کاتالوگ‌های آموزشی جهت مونتاژ نهایی دستیار شما.'}
+            {step === 1 && 'نام، رنگ سازمانی و حوزه فعالیت کسب‌وکارتان را وارد کنید.'}
+            {step === 2 && 'هوش مصنوعی بر اساس تخصص شما، سوالات مرتبط پیشنهاد می‌دهد.'}
+            {step === 3 && 'پاسخ سوالاتی که می‌خواهید دستیار پاسخ دهد را بنویسید. سوالات ناخواسته را حذف کنید.'}
+            {step === 4 && 'اطلاعات نهایی خود را مرور کنید و دستیار را فعال کنید.'}
           </p>
         </div>
 
-        {/* STEP 1: BASICS FORM */}
+        {/* ─── STEP 1 ─── */}
         {step === 1 && (
           <div className="space-y-6 animate-in fade-in duration-200">
-            {/* Legal Name */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">نام کسب‌وکار</label>
-              <input
-                type="text"
-                id="biz-name"
-                value={name}
-                onChange={(e) => {
-                  setName(e.target.value);
-                  setBasicsError('');
-                }}
-                placeholder="مثال: کلینیک آیلتس تهران یا فروشگاه هوم‌کِر"
-                className="w-full h-12 px-3.5 bg-white border border-slate-250 focus:border-blue-500 rounded-xl text-sm font-semibold tracking-wide transition outline-none"
-              />
-              {basicsError && <p className="text-rose-600 text-[11px] font-bold mt-1">{basicsError}</p>}
-            </div>
+            <Input
+              label="نام کسب‌وکار"
+              value={name}
+              onChange={e => { setName(e.target.value); setBasicsError(''); }}
+              placeholder="مثال: آموزشگاه آینده‌ساز یا کلینیک دکتر رضایی"
+              error={basicsError}
+            />
 
-            {/* Selection vertical grids */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">صنف فعالیت اصلی</label>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {/* Edu */}
-                <button
-                  type="button"
-                  id="type-education"
-                  onClick={() => setBusinessType('education')}
-                  className={`p-4 rounded-xl border-2 text-right flex flex-col justify-between h-28 cursor-pointer transition active-scale relative ${
-                    businessType === 'education'
-                      ? 'border-blue-600 bg-blue-50/20'
-                      : 'border-slate-200 hover:border-slate-300 bg-white'
-                  }`}
-                >
-                  <GraduationCap className={`w-6 h-6 ${businessType === 'education' ? 'text-blue-600' : 'text-slate-400'}`} />
-                  <div>
-                    <h3 className="font-bold text-xs text-slate-900 leading-none mb-1">آموزشی و کلاس‌ها</h3>
-                    <p className="text-[10px] text-slate-400 leading-tight">دوره‌ها، شهریه و ثبت‌نام</p>
-                  </div>
-                  {businessType === 'education' && (
-                    <div className="absolute top-2 left-2 w-4 h-4 rounded-full bg-blue-600 flex items-center justify-center text-white"><Check className="w-2.5 h-2.5" /></div>
-                  )}
-                </button>
-
-                {/* Service */}
-                <button
-                  type="button"
-                  id="type-services"
-                  onClick={() => setBusinessType('services')}
-                  className={`p-4 rounded-xl border-2 text-right flex flex-col justify-between h-28 cursor-pointer transition active-scale relative ${
-                    businessType === 'services'
-                      ? 'border-blue-600 bg-blue-50/20'
-                      : 'border-slate-200 hover:border-slate-300 bg-white'
-                  }`}
-                >
-                  <Wrench className={`w-6 h-6 ${businessType === 'services' ? 'text-blue-600' : 'text-slate-400'}`} />
-                  <div>
-                    <h3 className="font-bold text-xs text-slate-900 leading-none mb-1">خدماتی و کلینیک</h3>
-                    <p className="text-[10px] text-slate-400 leading-tight">رزرو وقت، پرسنل و لغو نوبت</p>
-                  </div>
-                  {businessType === 'services' && (
-                    <div className="absolute top-2 left-2 w-4 h-4 rounded-full bg-blue-600 flex items-center justify-center text-white"><Check className="w-2.5 h-2.5" /></div>
-                  )}
-                </button>
-
-                {/* Retail */}
-                <button
-                  type="button"
-                  id="type-retail"
-                  onClick={() => setBusinessType('retail')}
-                  className={`p-4 rounded-xl border-2 text-right flex flex-col justify-between h-28 cursor-pointer transition active-scale relative ${
-                    businessType === 'retail'
-                      ? 'border-blue-600 bg-blue-50/20'
-                      : 'border-slate-200 hover:border-slate-300 bg-white'
-                  }`}
-                >
-                  <ShoppingBag className={`w-6 h-6 ${businessType === 'retail' ? 'text-blue-600' : 'text-slate-400'}`} />
-                  <div>
-                    <h3 className="font-bold text-xs text-slate-900 leading-none mb-1">فروشگاه آنلاین</h3>
-                    <p className="text-[10px] text-slate-400 leading-tight">محصولات، ارسال و مرجوعی</p>
-                  </div>
-                  {businessType === 'retail' && (
-                    <div className="absolute top-2 left-2 w-4 h-4 rounded-full bg-blue-600 flex items-center justify-center text-white"><Check className="w-2.5 h-2.5" /></div>
-                  )}
-                </button>
-              </div>
-            </div>
-
-            {/* Field */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">شاخه تخصصی فعالیت</label>
-              <input
-                type="text"
-                value={field}
-                onChange={(e) => setField(e.target.value)}
-                placeholder="مثال: آموزشگاه زبان‌های خارجی یا دندان‌پزشکی زیبایی"
-                className="w-full h-12 px-3.5 bg-white border border-slate-250 focus:border-blue-500 rounded-xl text-sm font-semibold tracking-wide transition outline-none text-right"
-              />
-            </div>
-
-            {/* Brand Color Selector */}
-            <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">رنگ سازمانی برند</label>
-              <p className="text-[10px] text-slate-400">رنگی که مایلید به عنوان تم اصلی پنل‌ها و ابزارک گفتگوهایتان اعمال شود.</p>
-              <div className="flex flex-wrap gap-2 pt-1 justify-start" dir="rtl">
+              <label className="text-sm font-medium text-slate-700">حوزه کاری</label>
+              <div className="grid grid-cols-2 gap-3">
                 {[
-                  { hex: '#2563eb', label: 'آبی هوشمند' },
-                  { hex: '#10b981', label: 'سبز زمردی' },
-                  { hex: '#4f46e5', label: 'نیلی مدرن' },
-                  { hex: '#8b5cf6', label: 'بنفش لوکس' },
-                  { hex: '#f43f5e', label: 'صورتی زیبایی' },
-                  { hex: '#f59e0b', label: 'نارنجی پرانرژی' },
-                  { hex: '#475569', label: 'زغال‌سنگی مدرن' },
-                ].map((colorItem) => (
+                  { type: 'education' as const, icon: GraduationHat01, title: 'آموزشی', sub: 'دوره‌ها، کلاس، آموزشگاه' },
+                  { type: 'services' as const, icon: Tool01, title: 'خدماتی', sub: 'کلینیک، آرایشگاه، تعمیرات' },
+                ].map(opt => (
                   <button
-                    key={colorItem.hex}
+                    key={opt.type}
                     type="button"
-                    onClick={() => setBrandColor(colorItem.hex)}
-                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-semibold transition active-scale cursor-pointer ${
-                      brandColor === colorItem.hex
-                        ? 'bg-slate-900 border-slate-900 text-white'
-                        : 'bg-white border-slate-200 text-slate-600 hover:border-slate-350'
+                    onClick={() => { setBusinessType(opt.type); setSelectedField(''); setCustomField(''); }}
+                    className={`p-4 rounded-xl border-2 text-right flex flex-col justify-between h-28 cursor-pointer transition relative ${
+                      businessType === opt.type ? 'border-blue-600 bg-blue-50/30' : 'border-slate-200 hover:border-slate-300 bg-white'
                     }`}
                   >
-                    <span
-                      className="w-2.5 h-2.5 rounded-full shrink-0 border border-black/10"
-                      style={{ backgroundColor: colorItem.hex }}
-                    />
-                    <span>{colorItem.label}</span>
-                    {brandColor === colorItem.hex && (
-                      <Check className="w-3 h-3 text-emerald-400" />
+                    <opt.icon className={`w-6 h-6 ${businessType === opt.type ? 'text-blue-600' : 'text-slate-400'}`} />
+                    <div>
+                      <h3 className="font-bold text-sm text-slate-900 leading-none mb-1">{opt.title}</h3>
+                      <p className="text-[10px] text-slate-400 leading-tight">{opt.sub}</p>
+                    </div>
+                    {businessType === opt.type && (
+                      <div className="absolute top-2 left-2 w-4 h-4 rounded-full bg-blue-600 flex items-center justify-center">
+                        <Check className="w-2.5 h-2.5 text-white" />
+                      </div>
                     )}
                   </button>
                 ))}
               </div>
             </div>
 
-            {/* Phone/Link */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">پل ارتباطی عمومی (تلفن/سایت/آدرس)</label>
-              <input
-                type="text"
-                value={contact}
-                onChange={(e) => setContact(e.target.value)}
-                placeholder="مثال: 09123456789 یا ieltsrange.com"
-                className="w-full h-12 px-3.5 bg-white border border-slate-250 focus:border-blue-500 rounded-xl text-sm font-semibold tracking-wide transition outline-none text-left"
-                dir="ltr"
-              />
-            </div>
-
-            {/* Hours */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">ساعات کاری مجموعه</label>
-              <input
-                type="text"
-                value={workingHours}
-                onChange={(e) => setWorkingHours(e.target.value)}
-                className="w-full h-12 px-3.5 bg-white border border-slate-250 focus:border-blue-500 rounded-xl text-sm font-semibold tracking-wide transition outline-none text-right"
-              />
-            </div>
-
-            {/* Welcome messages */}
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">پیام خوش‌آمدگویی پیش‌فرض ربات</label>
-              <textarea
-                value={welcomeMessage}
-                onChange={(e) => setWelcomeMessage(e.target.value)}
-                rows={2}
-                className="w-full p-3.5 bg-white border border-slate-250 focus:border-blue-500 rounded-xl text-sm font-semibold tracking-wide transition outline-none resize-none text-right"
-              />
-            </div>
-          </div>
-        )}
-
-        {/* STEP 2: AI AGENT PRESETS */}
-        {step === 2 && (
-          <div className="space-y-8 animate-in fade-in duration-200">
-            {/* Style cards */}
             <div className="space-y-2">
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">لحن پاسخ‌گویی هوش مصنوعی</label>
-              <div className="space-y-3">
-                {/* Friendly */}
-                <button
-                  type="button"
-                  onClick={() => setResponseStyle('friendly')}
-                  className={`w-full p-4 rounded-xl border-2 text-right transition flex items-center justify-between cursor-pointer active-scale ${
-                    responseStyle === 'friendly' ? 'border-blue-600 bg-blue-50/15' : 'border-slate-200 bg-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">😊</span>
-                    <div className="text-right">
-                      <h3 className="font-bold text-xs text-slate-900 leading-tight mb-0.5">گرماگرم و صمیمی</h3>
-                      <p className="text-[10px] text-slate-400">گفت‌وگوی همدلانه، عامیانه، صبورانه و دوستانه با مشتریان.</p>
-                    </div>
-                  </div>
-                  {responseStyle === 'friendly' && <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center text-white"><Check className="w-3 h-3" /></div>}
-                </button>
-
-                {/* Formal */}
-                <button
-                  type="button"
-                  onClick={() => setResponseStyle('formal')}
-                  className={`w-full p-4 rounded-xl border-2 text-right transition flex items-center justify-between cursor-pointer active-scale ${
-                    responseStyle === 'formal' ? 'border-blue-600 bg-blue-50/15' : 'border-slate-200 bg-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">💼</span>
-                    <div className="text-right">
-                      <h3 className="font-bold text-xs text-slate-900 leading-tight mb-0.5">رسمی و اداری</h3>
-                      <p className="text-[10px] text-slate-400">ادب کامل، جملات ساختاریافته، موضع تجاری محترمانه و خلاصه.</p>
-                    </div>
-                  </div>
-                  {responseStyle === 'formal' && <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center text-white"><Check className="w-3 h-3" /></div>}
-                </button>
-
-                {/* Technical */}
-                <button
-                  type="button"
-                  onClick={() => setResponseStyle('technical')}
-                  className={`w-full p-4 rounded-xl border-2 text-right transition flex items-center justify-between cursor-pointer active-scale ${
-                    responseStyle === 'technical' ? 'border-blue-600 bg-blue-50/15' : 'border-slate-200 bg-white'
-                  }`}
-                >
-                  <div className="flex items-center gap-3">
-                    <span className="text-2xl">🔧</span>
-                    <div className="text-right">
-                      <h3 className="font-bold text-xs text-slate-900 leading-tight mb-0.5">تخصصی و فنی</h3>
-                      <p className="text-[10px] text-slate-400">ارائه دقیق‌ترین اطلاعات، دستورالعمل‌های گام‌به‌گام و مستند.</p>
-                    </div>
-                  </div>
-                  {responseStyle === 'technical' && <div className="w-5 h-5 rounded-full bg-blue-600 flex items-center justify-center text-white"><Check className="w-3 h-3" /></div>}
-                </button>
-              </div>
-            </div>
-
-            {/* Slider */}
-            <div className="space-y-3 bg-white p-5 rounded-2xl border border-slate-200 shadow-sm relative text-right">
-              <div className="flex justify-between items-center">
-                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">سقف توکن‌های مجاز پاسخ (طول متن)</label>
-                <span className="font-mono text-sm font-bold text-blue-600" dir="ltr">{maxTokens} توکن</span>
-              </div>
-              
-              <input
-                type="range"
-                min="200"
-                max="4000"
-                step="50"
-                value={maxTokens}
-                onChange={(e) => setMaxTokens(parseInt(e.target.value))}
-                className="w-full h-2 bg-slate-100 rounded-lg appearance-none cursor-pointer accent-blue-600 focus:outline-none"
-              />
-
-              <div className="flex justify-between text-[10px] text-slate-450 font-bold px-0.5">
-                <span>۲۰۰ (پاسخ کوتاه)</span>
-                <span>۲۰۰۰ (پاسخ متوسط)</span>
-                <span>۴۰۰۰ (پاسخ کامل و با جزئیات)</span>
-              </div>
-              <p className="text-[10px] text-slate-400 leading-normal font-normal pt-2 flex items-start gap-1">
-                <Settings className="w-4 h-4 text-slate-300 shrink-0 mt-0.5" />
-                <span>تنظیم سقف توکن‌های پایین‌تر سرعت پاسخ را بهینه می‌کند. سقف‌های بیشتر به شرح جزئیات مفصل کمک می‌کند.</span>
-              </p>
-            </div>
-          </div>
-        )}
-
-        {/* STEP 3: DYNAMIC KNOWLEDGE FORMS */}
-        {step === 3 && (
-          <div className="space-y-6 animate-in fade-in duration-200">
-            
-            {/* Dynamic education questions template */}
-            {businessType === 'education' && (
-              <div className="space-y-5 text-right">
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">لیست دوره‌ها و کلاس‌های فعال</label>
-                  <textarea
-                    value={eduCourses}
-                    onChange={(e) => setEduCourses(e.target.value)}
-                    rows={3}
-                    className="w-full p-3 bg-white border border-slate-250 focus:border-blue-500 rounded-xl text-xs font-semibold outline-none tracking-wide resize-none text-right"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">برنامه زمانی و تقویم دوره‌ها</label>
-                  <textarea
-                    value={eduSchedule}
-                    onChange={(e) => setEduSchedule(e.target.value)}
-                    rows={2}
-                    className="w-full p-3 bg-white border border-slate-250 focus:border-blue-500 rounded-xl text-xs font-semibold outline-none tracking-wide resize-none text-right"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">فرآیند پذیرش و تعیین سطح</label>
-                  <textarea
-                    value={eduEnrollment}
-                    onChange={(e) => setEduEnrollment(e.target.value)}
-                    rows={2}
-                    className="w-full p-3 bg-white border border-slate-250 focus:border-blue-500 rounded-xl text-xs font-semibold outline-none tracking-wide resize-none text-right"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">شهریه‌ها و نحوه پرداخت نقدی/اقساط</label>
-                  <textarea
-                    value={eduTuition}
-                    onChange={(e) => setEduTuition(e.target.value)}
-                    rows={2}
-                    className="w-full p-3 bg-white border border-slate-250 focus:border-blue-500 rounded-xl text-xs font-semibold outline-none tracking-wide resize-none text-right"
-                  />
-                </div>
-                <div className="space-y-2">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">شیوه و نحوه ارائه خدمات کلاس</label>
-                  <div className="grid grid-cols-3 gap-2">
-                    {['online', 'inperson', 'hybrid'].map((fmt) => (
-                      <button
-                        key={fmt}
-                        type="button"
-                        onClick={() => setEduFormat(fmt as any)}
-                        className={`py-2 px-3 text-center text-xs font-bold rounded-xl border transition cursor-pointer capitalize active-scale ${
-                          eduFormat === fmt
-                            ? 'bg-blue-600 text-white border-blue-600'
-                            : 'bg-white border-slate-200 text-slate-600 hover:border-slate-350'
-                        }`}
-                      >
-                        {fmt === 'online' ? 'آنلاین / بستر مجازی' : fmt === 'inperson' ? 'حضوری رسمی' : 'ترکیبی و دوگان'}
-                      </button>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Dynamic Service questions template */}
-            {businessType === 'services' && (
-              <div className="space-y-5 text-right">
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">خدمات و درمان‌های ارائه‌شده</label>
-                  <textarea
-                    value={serServices}
-                    onChange={(e) => setSerServices(e.target.value)}
-                    rows={3}
-                    className="w-full p-3 bg-white border border-slate-250 focus:border-blue-500 rounded-xl text-xs font-semibold outline-none tracking-wide resize-none text-right"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">پروتکل و فرآیند رزرو نوبت</label>
-                  <textarea
-                    value={serProcess}
-                    onChange={(e) => setSerProcess(e.target.value)}
-                    rows={2}
-                    className="w-full p-3 bg-white border border-slate-250 focus:border-blue-500 rounded-xl text-xs font-semibold outline-none tracking-wide resize-none text-right"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">مقررات لغو و جابه‌جایی نوبت</label>
-                  <textarea
-                    value={serCancel}
-                    onChange={(e) => setSerCancel(e.target.value)}
-                    rows={2}
-                    className="w-full p-3 bg-white border border-slate-250 focus:border-blue-500 rounded-xl text-xs font-semibold outline-none tracking-wide resize-none text-right"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">پزشکان، کارشناسان و متخصصان فعال</label>
-                  <textarea
-                    value={serSpecialists}
-                    onChange={(e) => setSerSpecialists(e.target.value)}
-                    rows={2}
-                    className="w-full p-3 bg-white border border-slate-250 focus:border-blue-500 rounded-xl text-xs font-semibold outline-none tracking-wide resize-none text-right"
-                  />
-                </div>
-              </div>
-            )}
-
-            {/* Dynamic Retail questions template */}
-            {businessType === 'retail' && (
-              <div className="space-y-5 text-right">
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">کالاها و کاتالوگ محصولات</label>
-                  <textarea
-                    value={retProducts}
-                    onChange={(e) => setRetProducts(e.target.value)}
-                    rows={3}
-                    className="w-full p-3 bg-white border border-slate-250 focus:border-blue-500 rounded-xl text-xs font-semibold outline-none tracking-wide resize-none text-right"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">هزینه‌ها و شیوه‌های ارسال سفارش</label>
-                  <textarea
-                    value={retShipping}
-                    onChange={(e) => setRetShipping(e.target.value)}
-                    rows={2}
-                    className="w-full p-3 bg-white border border-slate-250 focus:border-blue-500 rounded-xl text-xs font-semibold outline-none tracking-wide resize-none text-right"
-                  />
-                </div>
-                <div className="space-y-1.5">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">قوانین عودت کالا و مرجوعی</label>
-                  <textarea
-                    value={retReturn}
-                    onChange={(e) => setRetReturn(e.target.value)}
-                    rows={2}
-                    className="w-full p-3 bg-white border border-slate-250 focus:border-blue-500 rounded-xl text-xs font-semibold outline-none tracking-wide resize-none text-right"
-                  />
-                </div>
-                <div className="space-y-2.5">
-                  <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">شیوه‌های پرداخت مورد پذیرش</label>
-                  <div className="grid grid-cols-2 gap-3 bg-white p-4 rounded-xl border border-slate-200 shadow-sm text-right">
-                    {Object.keys(retPayments).map((mKey) => (
-                      <label key={mKey} className="flex items-center gap-2 text-xs font-semibold text-slate-700 cursor-pointer justify-start">
-                        <input
-                          type="checkbox"
-                          checked={(retPayments as any)[mKey]}
-                          onChange={(e) => setRetPayments({ ...retPayments, [mKey]: e.target.checked })}
-                          className="w-4 h-4 text-blue-600 border-slate-350 rounded focus:ring-blue-500"
-                        />
-                        <span>
-                          {mKey === 'card' ? 'درگاه بانکی / کارت به کارت' : 
-                          mKey === 'transfer' ? 'حواله معتبر پایا/ساتنا' : 
-                          mKey === 'cash' ? 'پرداخت در محل (نقدی)' : 'سایر روش‌ها'}
-                        </span>
-                      </label>
-                    ))}
-                  </div>
-                </div>
-              </div>
-            )}
-
-            {/* Custom Q&A options lists */}
-            <div className="space-y-4 pt-4 border-t border-slate-200 text-right">
-              <div className="flex justify-between items-center">
-                <label className="block text-xs font-bold text-slate-700 uppercase tracking-wide">پرسش و پاسخ‌های متداول بیشتر</label>
-                <button
-                  type="button"
-                  onClick={handleAddField}
-                  className="inline-flex items-center gap-1 text-xs text-blue-600 hover:text-blue-700 font-bold tracking-wide cursor-pointer"
-                >
-                  <Plus className="w-3.5 h-3.5 ml-1" />
-                  <span>ثبت پرسش و پاسخ جدید</span>
-                </button>
-              </div>
-
-              {/* QA card list */}
-              <div className="space-y-3">
-                {qas.map((qaItem, qIdx) => (
-                  <div key={qIdx} className="bg-white border border-slate-200 p-4 rounded-xl relative shadow-sm space-y-3 animate-in slide-in-from-bottom-2 duration-150 text-right">
-                    <button
-                      type="button"
-                      onClick={() => handleRemoveField(qIdx)}
-                      className="absolute top-3 left-3 text-slate-400 hover:text-rose-600 p-1 rounded-full hover:bg-slate-50 transition cursor-pointer"
-                    >
-                      <Trash2 className="w-4 h-4" />
-                    </button>
-                    {/* inputs */}
-                    <div className="space-y-1.5">
-                      <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide text-right">پرسش شماره {qIdx + 1}</span>
-                      <input
-                        type="text"
-                        value={qaItem.question}
-                        onChange={(e) => handleUpdateField(qIdx, 'question', e.target.value)}
-                        placeholder="مثال: آیا در ایام تعطیلات رسمی کلاس‌ها فعال هستند؟"
-                        className="w-full h-10 px-3 bg-slate-50 focus:bg-white border border-slate-250 focus:border-blue-500 rounded-lg text-xs font-semibold outline-none text-right"
-                      />
-                    </div>
-                    <div className="space-y-1.5">
-                      <span className="block text-[10px] font-bold text-slate-400 uppercase tracking-wide text-right">پاسخ متناظر</span>
-                      <textarea
-                        value={qaItem.answer}
-                        onChange={(e) => handleUpdateField(qIdx, 'answer', e.target.value)}
-                        rows={2}
-                        placeholder="مثال: خیر، تمامی کلاس‌های رسمی در روزهای تعطیل عمومی کشور، تعطیل خواهند بود."
-                        className="w-full p-2.5 bg-slate-50 focus:bg-white border border-slate-250 focus:border-blue-500 rounded-lg text-xs font-semibold outline-none resize-none text-right"
-                      />
-                    </div>
-                  </div>
+              <label className="text-sm font-medium text-slate-700">رنگ سازمانی برند</label>
+              <div className="flex flex-wrap gap-2 pt-1">
+                {[
+                  { hex: '#2563eb', label: 'آبی' }, { hex: '#10b981', label: 'سبز' },
+                  { hex: '#4f46e5', label: 'نیلی' }, { hex: '#8b5cf6', label: 'بنفش' },
+                  { hex: '#f43f5e', label: 'صورتی' }, { hex: '#f59e0b', label: 'نارنجی' },
+                  { hex: '#475569', label: 'خاکستری' },
+                ].map(c => (
+                  <button
+                    key={c.hex}
+                    type="button"
+                    onClick={() => setBrandColor(c.hex)}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-semibold transition cursor-pointer ${
+                      brandColor === c.hex ? 'bg-slate-900 border-slate-900 text-white' : 'bg-white border-slate-200 text-slate-600 hover:border-slate-300'
+                    }`}
+                  >
+                    <span className="w-2.5 h-2.5 rounded-full shrink-0 border border-black/10" style={{ backgroundColor: c.hex }} />
+                    {c.label}
+                    {brandColor === c.hex && <Check className="w-3 h-3 text-emerald-400" />}
+                  </button>
                 ))}
-
-                {qas.length === 0 && (
-                  <p className="text-center text-[11px] text-slate-400 py-4 bg-slate-100/40 rounded-xl border border-dashed border-slate-200">
-                    هنوز هیچ پرسش و پاسخ سفارشی وارد نکرده‌اید (اختیاری)
-                  </p>
-                )}
               </div>
             </div>
-
           </div>
         )}
 
-        {/* STEP 4: REVIEW SUMMARY VIEW */}
+        {/* ─── STEP 2 ─── */}
+        {step === 2 && (
+          <div className="space-y-6 animate-in fade-in duration-200">
+            <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-xs text-blue-700 font-semibold flex items-center gap-2">
+              <Bot className="w-4 h-4 shrink-0" />
+              <span>
+                بر اساس انتخاب شما (<b>{businessType === 'education' ? 'آموزشی' : 'خدماتی'}</b>)، هوش مصنوعی سوالات مناسب پیشنهاد می‌دهد.
+              </span>
+            </div>
+
+            <div className="space-y-2">
+              <label className="text-sm font-medium text-slate-700">
+                {businessType === 'education' ? 'حوزه آموزشی' : 'نوع خدمات'}
+              </label>
+              <div className="flex flex-wrap gap-2">
+                {(businessType === 'education' ? EDUCATION_FIELDS : SERVICE_FIELDS).map(f => (
+                  <button
+                    key={f.label}
+                    type="button"
+                    onClick={() => { setSelectedField(f.label); setCustomField(''); setFieldError(''); }}
+                    className={`flex items-center gap-1.5 px-3 py-2 rounded-xl border text-xs font-semibold transition cursor-pointer ${
+                      selectedField === f.label && !customField
+                        ? 'bg-blue-600 border-blue-600 text-white'
+                        : 'bg-white border-slate-200 text-slate-700 hover:border-blue-300'
+                    }`}
+                  >
+                    <span>{f.icon}</span>
+                    <span>{f.label}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            <Input
+              label="یا دقیقاً بنویسید چه کاری انجام می‌دهید"
+              value={customField}
+              onChange={e => {
+                setCustomField(e.target.value);
+                if (e.target.value) setSelectedField('');
+                setFieldError('');
+              }}
+              placeholder={businessType === 'education'
+                ? 'مثال: آموزش برنامه‌نویسی Flutter'
+                : 'مثال: مطب دندانپزشکی کودکان'}
+              error={fieldError}
+            />
+
+            {getEffectiveField() && (
+              <div className="bg-emerald-50 border border-emerald-200 rounded-xl p-3 flex items-center gap-2">
+                <Check className="w-4 h-4 text-emerald-600 shrink-0" />
+                <span className="text-xs font-bold text-emerald-700">
+                  انتخاب شما: <span className="text-emerald-900">{businessType === 'education' ? 'آموزشی' : 'خدماتی'} — {getEffectiveField()}</span>
+                </span>
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ─── STEP 3 ─── */}
+        {step === 3 && (
+          <div className="space-y-5 animate-in fade-in duration-200">
+            {isLoadingQuestions && (
+              <div className="flex flex-col items-center justify-center py-16 gap-4">
+                <div className="w-14 h-14 rounded-2xl bg-blue-50 border border-blue-100 flex items-center justify-center">
+                  <Bot className="w-7 h-7 text-blue-600 animate-pulse" />
+                </div>
+                <div className="text-center space-y-1">
+                  <p className="text-sm font-bold text-slate-700">هوش مصنوعی در حال تحلیل حوزه کاری شماست...</p>
+                  <p className="text-xs text-slate-400">سوالات مرتبط با <b>{getEffectiveField()}</b> در حال آماده‌سازی است</p>
+                </div>
+                <div className="flex gap-1.5">
+                  {[0, 150, 300].map(d => (
+                    <span key={d} className="w-2 h-2 bg-blue-600 rounded-full animate-bounce" style={{ animationDelay: `${d}ms` }} />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!isLoadingQuestions && questionsLoaded && (
+              <>
+                <div className="bg-amber-50 border border-amber-200 rounded-xl p-3 text-xs text-amber-800 font-semibold space-y-1">
+                  <div className="flex items-center gap-1.5">
+                    <Sparkles className="w-3.5 h-3.5 text-amber-600" />
+                    <span className="font-bold">نکته مهم درباره اس‌ام‌اس</span>
+                  </div>
+                  <p className="text-amber-700 font-normal leading-relaxed">
+                    اگر مشتری سوالی بپرسد که پاسخی ثبت نشده باشد، پرسا فوراً یک <b>اس‌ام‌اس</b> به شما می‌فرستد.
+                  </p>
+                </div>
+
+                <div className="flex items-center justify-between text-xs">
+                  <span className="font-bold text-slate-600">{totalCount} سوال پیشنهادی</span>
+                  <span className="text-emerald-600 font-bold">{answeredCount} پاسخ داده شده</span>
+                </div>
+                <div className="w-full h-1.5 bg-slate-100 rounded-full overflow-hidden">
+                  <div
+                    className="h-full bg-emerald-500 rounded-full transition-all duration-500"
+                    style={{ width: totalCount ? `${(answeredCount / totalCount) * 100}%` : '0%' }}
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  {aiQuestions.map(q => (
+                    <div
+                      key={q.id}
+                      className={`bg-white border rounded-xl p-4 space-y-3 shadow-sm ${q.answer ? 'border-emerald-200' : 'border-slate-200'}`}
+                    >
+                      <div className="flex items-start justify-between gap-2">
+                        <div className="flex items-start gap-2 flex-1">
+                          <MessageSquare01 className={`w-4 h-4 mt-0.5 shrink-0 ${q.answer ? 'text-emerald-500' : 'text-blue-400'}`} />
+                          {q.fromAi ? (
+                            <p className="text-xs font-bold text-slate-800 leading-relaxed">{q.question}</p>
+                          ) : (
+                            <input
+                              type="text"
+                              value={q.question}
+                              onChange={e => handleUpdateCustomQuestion(q.id, e.target.value)}
+                              placeholder="متن سوال را بنویسید..."
+                              className="flex-1 text-xs font-bold text-slate-800 bg-transparent outline-none border-b border-slate-200 focus:border-blue-400 pb-0.5"
+                            />
+                          )}
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() => handleDeleteQuestion(q.id)}
+                          className="text-slate-300 hover:text-red-500 p-1 rounded-lg hover:bg-red-50 transition cursor-pointer shrink-0"
+                        >
+                          <Trash01 className="w-3.5 h-3.5" />
+                        </button>
+                      </div>
+
+                      {editingAnswerId === q.id ? (
+                        <div className="space-y-2">
+                          <Textarea
+                            value={tempAnswer}
+                            onChange={e => setTempAnswer(e.target.value)}
+                            placeholder={q.placeholder}
+                            rows={3}
+                            autoFocus
+                          />
+                          <div className="flex gap-2">
+                            <Button
+                              size="sm"
+                              variant="primary"
+                              leftIcon={<Check className="w-3.5 h-3.5" />}
+                              onClick={() => handleSaveAnswer(q.id)}
+                            >
+                              ذخیره پاسخ
+                            </Button>
+                            <Button
+                              size="sm"
+                              variant="secondary"
+                              leftIcon={<XClose className="w-3.5 h-3.5" />}
+                              onClick={handleCancelEdit}
+                            >
+                              انصراف
+                            </Button>
+                          </div>
+                        </div>
+                      ) : (
+                        <button
+                          type="button"
+                          onClick={() => handleStartEdit(q)}
+                          className={`w-full text-right p-2.5 rounded-lg border text-xs transition cursor-pointer group ${
+                            q.answer
+                              ? 'bg-emerald-50 border-emerald-200 text-emerald-800 font-semibold'
+                              : 'bg-slate-50 border-slate-200 border-dashed text-slate-400 hover:bg-blue-50 hover:border-blue-300 hover:text-blue-600'
+                          }`}
+                        >
+                          {q.answer ? (
+                            <span className="flex items-center justify-between gap-2">
+                              <span className="leading-relaxed">{q.answer}</span>
+                              <Pencil01 className="w-3 h-3 shrink-0 text-emerald-400 group-hover:text-emerald-600" />
+                            </span>
+                          ) : (
+                            <span className="flex items-center gap-1.5">
+                              <Pencil01 className="w-3 h-3" />
+                              <span>برای نوشتن پاسخ کلیک کنید... <span className="text-[10px] text-slate-300">(بدون پاسخ = SMS دریافت می‌کنید)</span></span>
+                            </span>
+                          )}
+                        </button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                <Button
+                  variant="secondary"
+                  fullWidth
+                  leftIcon={<Plus className="w-4 h-4" />}
+                  onClick={handleAddCustomQuestion}
+                  className="border-dashed"
+                >
+                  افزودن سوال اختصاصی
+                </Button>
+
+                <Button
+                  variant="ghost"
+                  fullWidth
+                  leftIcon={<RefreshCw01 className="w-3.5 h-3.5" />}
+                  onClick={loadAiQuestions}
+                >
+                  بارگذاری مجدد سوالات پیشنهادی
+                </Button>
+              </>
+            )}
+          </div>
+        )}
+
+        {/* ─── STEP 4 ─── */}
         {step === 4 && (
-          <div className="space-y-6 animate-in fade-in duration-200 text-right">
-            {/* Business summary card */}
+          <div className="space-y-5 animate-in fade-in duration-200">
             <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 space-y-4">
               <div className="flex justify-between items-center pb-2.5 border-b border-slate-100">
-                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600"><Layers className="w-4 h-4" /> <span>نمایه تجاری کسب‌وکار</span></span>
-                <button type="button" onClick={() => setStep(1)} className="text-[11px] text-blue-600 font-extrabold hover:underline">ویرایش مرحله ۱</button>
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600">
+                  <LayersThree01 className="w-4 h-4" /> نمایه کسب‌وکار
+                </span>
+                <button type="button" onClick={() => setStep(1)} className="text-[11px] text-blue-600 font-extrabold hover:underline">ویرایش</button>
               </div>
               <div className="grid grid-cols-2 gap-y-3.5 gap-x-2 text-xs">
+                {[
+                  { label: 'نام کسب‌وکار', val: name },
+                  { label: 'حوزه کاری', val: businessType === 'education' ? 'آموزشی' : 'خدماتی' },
+                  { label: 'تخصص', val: getEffectiveField() },
+                ].map(row => (
+                  <div key={row.label}>
+                    <span className="block text-[10px] text-slate-400 uppercase font-bold mb-0.5">{row.label}</span>
+                    <span className="font-semibold text-slate-900">{row.val}</span>
+                  </div>
+                ))}
                 <div>
-                  <span className="block text-[10px] text-slate-400 uppercase font-bold">نام کسب‌وکار</span>
-                  <span className="font-semibold text-slate-900">{name}</span>
-                </div>
-                <div>
-                  <span className="block text-[10px] text-slate-400 uppercase font-bold">صنف فعالیت</span>
-                  <span className="font-semibold text-slate-900 capitalize">
-                    {businessType === 'education' ? 'آموزشی و درسی' : businessType === 'services' ? 'خدمات تخصصی' : 'فروشگاهی و خرده‌فروشی'}
-                  </span>
-                </div>
-                <div>
-                  <span className="block text-[10px] text-slate-400 uppercase font-bold">تخصص فرعی</span>
-                  <span className="font-semibold text-slate-900 truncate block">{field || 'ثبت نشده'}</span>
-                </div>
-                <div>
-                  <span className="block text-[10px] text-slate-400 uppercase font-bold">رنگ سازمانی برند</span>
-                  <div className="flex items-center gap-1 mt-0.5 justify-start">
-                    <span className="w-2.5 h-2.5 rounded-full border border-black/10 shrink-0" style={{ backgroundColor: brandColor }} />
-                    <span className="font-semibold text-slate-900 block truncate">
-                      {brandColor === '#2563eb' ? 'آبی هوشمند' :
-                       brandColor === '#10b981' ? 'سبز زمردی' :
-                       brandColor === '#4f46e5' ? 'نیلی مدرن' :
-                       brandColor === '#8b5cf6' ? 'بنفش لوکس' :
-                       brandColor === '#f43f5e' ? 'صورتی زیبایی' :
-                       brandColor === '#f59e0b' ? 'نارنجی پرانرژی' : 'زغال‌سنگی مدرن'}
-                    </span>
+                  <span className="block text-[10px] text-slate-400 uppercase font-bold mb-0.5">رنگ سازمانی</span>
+                  <div className="flex items-center gap-1.5">
+                    <span className="w-3 h-3 rounded-full border border-black/10" style={{ backgroundColor: brandColor }} />
+                    <span className="font-semibold text-slate-900">{brandColor}</span>
                   </div>
                 </div>
-                <div>
-                  <span className="block text-[10px] text-slate-400 uppercase font-bold">پل‌های تماس</span>
-                  <span className="font-semibold text-slate-900">{contact || 'ثبت نشده'}</span>
-                </div>
-                <div>
-                  <span className="block text-[10px] text-slate-400 uppercase font-bold font-medium">ساعات کار دفتری</span>
-                  <span className="font-semibold text-slate-900">{workingHours}</span>
-                </div>
               </div>
             </div>
 
-            {/* AI Agent Tones card */}
             <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 space-y-4">
               <div className="flex justify-between items-center pb-2.5 border-b border-slate-100">
-                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600"><Settings className="w-4 h-4" /> <span>سبک تعاملی دستیار هوشمند</span></span>
-                <button type="button" onClick={() => setStep(2)} className="text-[11px] text-blue-600 font-extrabold hover:underline">ویرایش مرحله ۲</button>
+                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600">
+                  <File01 className="w-4 h-4" /> پایگاه دانش دستیار
+                </span>
+                <button type="button" onClick={() => setStep(3)} className="text-[11px] text-blue-600 font-extrabold hover:underline">ویرایش</button>
               </div>
-              <div className="grid grid-cols-2 gap-4 text-xs">
-                <div>
-                  <span className="block text-[10px] text-slate-400 uppercase font-bold">لحن پاسخ‌گویی</span>
-                  <span className="font-semibold text-slate-900">
-                    {responseStyle === 'friendly' ? 'صمیمی و صبورانه' : responseStyle === 'formal' ? 'رسمی و اداری' : 'فنی و تخصصی'}
-                  </span>
+              <div className="space-y-2 text-xs">
+                {[
+                  { label: 'تعداد کل سوالات', val: totalCount, cls: '' },
+                  { label: 'سوالات با پاسخ آماده', val: answeredCount, cls: 'text-emerald-600' },
+                  { label: 'سوالات بدون پاسخ (SMS)', val: totalCount - answeredCount, cls: 'text-amber-600' },
+                ].map(row => (
+                  <div key={row.label} className="flex justify-between font-semibold text-slate-700">
+                    <span>{row.label}</span>
+                    <span className={`font-bold ${row.cls}`}>{row.val}</span>
+                  </div>
+                ))}
+              </div>
+              {totalCount - answeredCount > 0 && (
+                <div className="bg-amber-50 border border-amber-200 rounded-lg p-2.5 text-xs text-amber-700 font-semibold flex items-start gap-2">
+                  <AlertTriangle className="w-3.5 h-3.5 shrink-0 mt-0.5" />
+                  <span>برای {totalCount - answeredCount} سوال بدون پاسخ، وقتی مشتری بپرسد اس‌ام‌اس می‌گیرید.</span>
                 </div>
-                <div>
-                  <span className="block text-[10px] text-slate-400 uppercase font-bold">سقف توکن پاسخ‌ها</span>
-                  <span className="font-semibold text-slate-900 font-mono" dir="ltr">{maxTokens} توکن</span>
-                </div>
-              </div>
-            </div>
-
-            {/* Knowledge block overview */}
-            <div className="bg-white border border-slate-200 rounded-2xl shadow-sm p-5 space-y-4">
-              <div className="flex justify-between items-center pb-2.5 border-b border-slate-100">
-                <span className="inline-flex items-center gap-1.5 text-xs font-bold text-blue-600"><FileSpreadsheet className="w-4 h-4" /> <span>خلاصه پایگاه دانش آموزش‌دیده</span></span>
-                <button type="button" onClick={() => setStep(3)} className="text-[11px] text-blue-600 font-extrabold hover:underline">ویرایش مرحله ۳</button>
-              </div>
-              <div className="space-y-3.5 text-xs">
-                {businessType === 'education' && (
-                  <>
-                    <div>
-                      <span className="block text-[10px] text-slate-400 uppercase font-bold mb-0.5">برنامه دوره‌ها</span>
-                      <p className="font-semibold text-slate-800 leading-relaxed truncate">{eduCourses}</p>
-                    </div>
-                    <div>
-                      <span className="block text-[10px] text-slate-400 uppercase font-bold mb-0.5">زمان‌بندی کلاس‌ها</span>
-                      <p className="font-semibold text-slate-800 leading-relaxed truncate">{eduSchedule}</p>
-                    </div>
-                  </>
-                )}
-                {businessType === 'services' && (
-                  <>
-                    <div>
-                      <span className="block text-[10px] text-slate-400 uppercase font-bold mb-0.5">خدمات اصلی</span>
-                      <p className="font-semibold text-slate-800 leading-relaxed truncate">{serServices}</p>
-                    </div>
-                    <div>
-                      <span className="block text-[10px] text-slate-400 uppercase font-bold mb-0.5 font-medium">مسیر رزرو وقت</span>
-                      <p className="font-semibold text-slate-800 leading-relaxed truncate">{serProcess}</p>
-                    </div>
-                  </>
-                )}
-                {businessType === 'retail' && (
-                  <>
-                    <div>
-                      <span className="block text-[10px] text-slate-400 uppercase font-bold mb-0.5">اقلام و محصولات</span>
-                      <p className="font-semibold text-slate-800 leading-relaxed truncate">{retProducts}</p>
-                    </div>
-                    <div>
-                      <span className="block text-[10px] text-slate-400 uppercase font-bold mb-0.5">مقررات مرسولات</span>
-                      <p className="font-semibold text-slate-800 leading-relaxed truncate">{retShipping}</p>
-                    </div>
-                  </>
-                )}
-                <div>
-                  <span className="block text-[10px] text-slate-400 uppercase font-bold">سوالات متداول اختصاصی</span>
-                  <span className="font-semibold text-slate-900">{qas.filter(q => q.question && q.answer).length} مورد پرسش و پاسخ سفارشی فعال شده است.</span>
-                </div>
-              </div>
+              )}
             </div>
           </div>
         )}
-
       </main>
 
-      {/* Fixed footer action buttons panel - ensures inputs don't hide buttons */}
-      <footer className="fixed bottom-0 left-0 right-0 h-18 bg-white border-t border-slate-250 px-4 flex items-center justify-center z-30 pb-safe">
-        <div className="max-w-2xl w-full flex gap-3 h-full items-center justify-between">
-          <button
-            type="button"
+      {/* Footer nav */}
+      <footer className="fixed bottom-0 left-0 right-0 bg-white border-t border-slate-200 px-4 py-3 z-30">
+        <div className="max-w-xl mx-auto flex gap-3 items-center justify-between">
+          <Button
+            variant="ghost"
+            size="md"
+            leftIcon={<ChevronRight className="w-4 h-4" />}
             onClick={handleBack}
             disabled={step === 1 || isSubmitting}
-            className="flex items-center gap-1 text-xs font-bold text-slate-500 hover:text-slate-800 py-3 px-4 rounded-xl disabled:opacity-30 cursor-pointer active-scale"
           >
-            <ChevronRight className="w-4 h-4" />
-            <span>مرحله قبل</span>
-          </button>
-          
+            مرحله قبل
+          </Button>
+
           {step < 4 ? (
-            <button
-              type="button"
-              id="onboarding-next"
+            <Button
+              size="md"
+              loading={isLoadingQuestions}
+              rightIcon={!isLoadingQuestions ? <ChevronLeft className="w-4 h-4" /> : undefined}
               onClick={handleNext}
-              className="flex items-center gap-1 bg-blue-600 hover:bg-blue-700 text-white font-bold py-3 px-6 rounded-xl shadow-md cursor-pointer text-xs active-scale"
             >
-              <span>مرحله بعدی</span>
-              <ChevronLeft className="w-4 h-4" />
-            </button>
+              {isLoadingQuestions ? 'در حال بارگذاری...' : 'مرحله بعدی'}
+            </Button>
           ) : (
-            <button
-              type="button"
-              id="onboarding-submit"
+            <Button
+              size="md"
+              loading={isSubmitting}
+              rightIcon={!isSubmitting ? <Sparkles className="w-4 h-4" /> : undefined}
               onClick={handleSubmit}
-              disabled={isSubmitting}
-              className="flex items-center gap-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold py-3 px-7 rounded-xl shadow-md cursor-pointer text-xs active-scale"
             >
-              <span>تجهیز و ساخت محیط کاربری هوشمند</span>
-              <Sparkles className="w-4.5 h-4.5" />
-            </button>
+              فعال‌سازی دستیار هوشمند
+            </Button>
           )}
         </div>
       </footer>
-
     </div>
   );
 }
+
 export type { BusinessType, ResponseStyle };

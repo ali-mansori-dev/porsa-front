@@ -1,24 +1,23 @@
 import React, { useEffect, useState } from 'react';
 import { useOutletContext } from 'react-router-dom';
 import {
-  BrainCircuit,
   Plus,
-  Trash2,
-  Edit2,
+  Trash01,
+  Edit02,
   Check,
-  RefreshCw,
+  RefreshCw01,
   AlertCircle,
-  Sparkles,
-  Award,
-  Layers,
+  LayersThree01,
   HelpCircle,
   Clock,
-  BookOpen
-} from 'lucide-react';
+  BookOpen01,
+} from '@untitled-ui/icons-react';
+import { BrainCircuit, Sparkles, Award } from 'lucide-react';
 import { api } from '../../services/api';
 import { KnowledgeDetail, CustomQA, Business, ResponseStyle } from '../../types';
 import { DashboardOutletContext } from '../../components/layout/DashboardLayout';
 import BottomDrawer from '../../components/common/BottomDrawer';
+import { Button, Input, Textarea } from '../../components/ui';
 
 export default function Knowledge() {
   const { business, refetchWorkspace } = useOutletContext<DashboardOutletContext>();
@@ -293,51 +292,16 @@ export default function Knowledge() {
       {activeTab === 'core' && (
         <form onSubmit={handleSaveCore} className="bg-white border border-slate-200 rounded-2xl shadow-sm p-4 sm:p-6 space-y-5 animate-in fade-in duration-150 text-right">
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">نام کسب‌وکار / پرتال</label>
-              <input
-                type="text"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                className="w-full h-11 px-3 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-lg text-xs font-semibold outline-none transition text-right"
-              />
+            <Input label="نام کسب‌وکار / پرتال" value={name} onChange={e => setName(e.target.value)} />
+            <Input label="زمینه یا صنف فعالیت تخصصی" value={field} onChange={e => setField(e.target.value)} />
+            <div className="col-span-1 md:col-span-2">
+              <Input label="پل‌های تماس عمومی (تلفن/سایت/کانال)" value={contact} onChange={e => setContact(e.target.value)} dir="ltr" className="text-left" />
             </div>
-            <div className="space-y-1.5">
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">زمینه یا صنف فعالیت تخصصی</label>
-              <input
-                type="text"
-                value={field}
-                onChange={(e) => setField(e.target.value)}
-                className="w-full h-11 px-3 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-lg text-xs font-semibold outline-none transition text-right"
-              />
+            <div className="col-span-1 md:col-span-2">
+              <Input label="ساعات کاری و پاسخ‌گویی رسمی" value={workingHours} onChange={e => setWorkingHours(e.target.value)} />
             </div>
-            <div className="space-y-1.5 col-span-1 md:col-span-2">
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">پل‌های تماس عمومی (تلفن/سایت/کانال)</label>
-              <input
-                type="text"
-                value={contact}
-                onChange={(e) => setContact(e.target.value)}
-                className="w-full h-11 px-3 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-lg text-xs font-semibold outline-none transition text-left"
-                dir="ltr"
-              />
-            </div>
-            <div className="space-y-1.5 col-span-1 md:col-span-2">
-              <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide">ساعات کاری و پاسخ‌گویی رسمی</label>
-              <input
-                type="text"
-                value={workingHours}
-                onChange={(e) => setWorkingHours(e.target.value)}
-                className="w-full h-11 px-3 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-lg text-xs font-semibold outline-none transition text-right"
-              />
-            </div>
-            <div className="space-y-1.5 col-span-1 md:col-span-2">
-              <label className="block text-xs font-bold text-slate-500">پیام خوش‌آمدگویی اولیه هوش مصنوعی</label>
-              <textarea
-                value={welcomeMessage}
-                onChange={(e) => setWelcomeMessage(e.target.value)}
-                rows={3}
-                className="w-full p-3 bg-slate-50 border border-slate-200 focus:border-blue-500 rounded-lg text-xs font-semibold outline-none transition resize-none text-right placeholder-slate-350"
-              />
+            <div className="col-span-1 md:col-span-2">
+              <Textarea label="پیام خوش‌آمدگویی اولیه هوش مصنوعی" value={welcomeMessage} onChange={e => setWelcomeMessage(e.target.value)} rows={3} />
             </div>
           </div>
 
@@ -362,13 +326,9 @@ export default function Knowledge() {
           </div>
 
           <div className="pt-3 border-t border-slate-100 flex justify-end">
-            <button
-              type="submit"
-              disabled={savingCore}
-              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 disabled:bg-blue-450 text-white font-bold h-11 px-6 rounded-xl shadow-md transition text-xs active-scale flex items-center justify-center gap-1.5 cursor-pointer"
-            >
-              {savingCore ? <RefreshCw className="w-4 h-4 animate-spin" /> : <span>ذخیره تغییرات و برنوشته پایه</span>}
-            </button>
+            <Button type="submit" loading={savingCore}>
+              ذخیره تغییرات پایه
+            </Button>
           </div>
         </form>
       )}
@@ -381,14 +341,13 @@ export default function Knowledge() {
               <h3 className="font-bold text-xs text-slate-800 uppercase tracking-wide">دانشکده صنف و متغیرهای تخصصی</h3>
               <p className="text-[10px] text-slate-400">متغیرهای تعبیه‌شده زیر به ربات هوشمند چارچوب اصلی فعالیتتان را دیكته می‌کند.</p>
             </div>
-            <button
-              type="button"
+            <Button
+              size="sm"
+              leftIcon={<Plus className="w-4 h-4" />}
               onClick={() => setAddDetailOpen(true)}
-              className="px-3.5 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 text-xs font-bold rounded-xl active-scale flex items-center gap-1 shrink-0 cursor-pointer"
             >
-              <Plus className="w-4 h-4 ml-1" />
-              <span>ایجاد گره جدید</span>
-            </button>
+              ایجاد گره جدید
+            </Button>
           </div>
 
           {detailsLoading ? (
@@ -407,17 +366,15 @@ export default function Knowledge() {
                       <div className="flex gap-1.5 items-center">
                         <button
                           onClick={() => handleEditDetail(node)}
-                          className="p-1 text-slate-400 hover:text-slate-805 rounded-full hover:bg-slate-50 transition cursor-pointer"
-                          title="ویرایش"
+                          className="p-1 text-slate-400 hover:text-slate-800 rounded-full hover:bg-slate-50 transition cursor-pointer"
                         >
-                          <Edit2 className="w-3.5 h-3.5" />
+                          <Edit02 className="w-3.5 h-3.5" />
                         </button>
                         <button
                           onClick={() => handleDeleteDetail(node.key)}
-                          className="p-1 text-slate-400 hover:text-rose-600 rounded-full hover:bg-slate-50 transition cursor-pointer"
-                          title="حذف"
+                          className="p-1 text-slate-400 hover:text-red-600 rounded-full hover:bg-slate-50 transition cursor-pointer"
                         >
-                          <Trash2 className="w-3.5 h-3.5" />
+                          <Trash01 className="w-3.5 h-3.5" />
                         </button>
                       </div>
                     </div>
@@ -445,16 +402,17 @@ export default function Knowledge() {
                 value={detailValue}
                 onChange={(e) => setDetailValue(e.target.value)}
                 rows={4}
-                className="w-full p-3 bg-slate-850 border border-slate-800 text-xs font-semibold rounded-xl outline-none text-white focus:border-blue-500 resize-none leading-relaxed text-right"
+                className="w-full p-3 bg-slate-800 border border-slate-700 text-xs font-semibold rounded-xl outline-none text-white focus:border-blue-500 resize-none leading-relaxed"
               />
               <div className="flex justify-end pt-1">
-                <button
+                <Button
                   type="submit"
-                  disabled={savingDetail || !detailValue.trim()}
-                  className="bg-blue-600 hover:bg-blue-500 disabled:bg-blue-400 px-5 h-9 font-bold rounded-xl text-xs active-scale transition cursor-pointer"
+                  size="sm"
+                  loading={savingDetail}
+                  disabled={!detailValue.trim()}
                 >
-                  {savingDetail ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'ثبت و اعمال تغییر صنف'}
-                </button>
+                  ثبت و اعمال تغییر صنف
+                </Button>
               </div>
             </form>
           )}
@@ -462,47 +420,38 @@ export default function Knowledge() {
           {/* Add custom entry Drawer popup */}
           <BottomDrawer isOpen={addDetailOpen} onClose={() => setAddDetailOpen(false)} title="ایجاد گره دانش جدید صنف برای ربات">
             <form onSubmit={handleAddDetailSubmit} className="space-y-4 text-right" dir="rtl">
-              <div className="space-y-1">
-                <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-widest text-right">کد شناسایی کلیدی (انگلیسی بدون فاصله)</label>
-                <input
-                  type="text"
-                  value={newDetailKey}
-                  onChange={(e) => setNewDetailKey(e.target.value)}
-                  placeholder="مثلا: courses_duration_rules"
-                  className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold outline-none text-left font-mono"
-                  dir="ltr"
-                  required
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-widest text-right">عنوان ملموس فارسی</label>
-                <input
-                  type="text"
-                  value={newDetailTitle}
-                  onChange={(e) => setNewDetailTitle(e.target.value)}
-                  placeholder="مثلا: مقررات طول دوره و جلسات غیبت"
-                  className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold outline-none text-right"
-                  required
-                />
-              </div>
-              <div className="space-y-1">
-                <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-widest text-right">متن مستندات آموزشی (ملاك پاسخ ربات)</label>
-                <textarea
-                  value={detailValue}
-                  onChange={(e) => setDetailValue(e.target.value)}
-                  rows={4}
-                  placeholder="توضیحات مبسوط و متنی را برای آموزش ربات در کادر زیر وارد کنید..."
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold outline-none resize-none leading-relaxed text-right"
-                  required
-                />
-              </div>
-              <button
+              <Input
+                label="کد شناسایی کلیدی (انگلیسی)"
+                value={newDetailKey}
+                onChange={e => setNewDetailKey(e.target.value)}
+                placeholder="courses_duration_rules"
+                dir="ltr"
+                className="font-mono text-left"
+                required
+              />
+              <Input
+                label="عنوان فارسی"
+                value={newDetailTitle}
+                onChange={e => setNewDetailTitle(e.target.value)}
+                placeholder="مثلا: مقررات طول دوره و جلسات غیبت"
+                required
+              />
+              <Textarea
+                label="متن مستندات آموزشی"
+                value={detailValue}
+                onChange={e => setDetailValue(e.target.value)}
+                rows={4}
+                placeholder="توضیحات برای آموزش دستیار..."
+                required
+              />
+              <Button
                 type="submit"
-                disabled={savingDetail || !newDetailKey.trim() || !newDetailTitle.trim() || !detailValue.trim()}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-11 rounded-xl shadow-md transition text-xs active-scale flex items-center justify-center cursor-pointer"
+                fullWidth
+                loading={savingDetail}
+                disabled={!newDetailKey.trim() || !newDetailTitle.trim() || !detailValue.trim()}
               >
-                {savingDetail ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'آموزش گره جدید به دستیار هوشمند'}
-              </button>
+                آموزش گره جدید به دستیار هوشمند
+              </Button>
             </form>
           </BottomDrawer>
         </div>
@@ -516,14 +465,13 @@ export default function Knowledge() {
               <h3 className="font-bold text-xs text-slate-805 uppercase tracking-wide">پرسش و پاسخ‌های متداول اختصاصی</h3>
               <p className="text-[10px] text-slate-400">مجموعه سوالاتی که دقیقا شامل کلمات هدف هستند را به همراه بهترین پاسخ دستی ست کنید.</p>
             </div>
-            <button
-              type="button"
+            <Button
+              size="sm"
+              leftIcon={<Plus className="w-4 h-4" />}
               onClick={handleOpenNewQA}
-              className="px-3.5 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 text-xs font-bold rounded-xl active-scale flex items-center gap-1 shrink-0 cursor-pointer"
             >
-              <Plus className="w-4 h-4 ml-1" />
-              <span>ثبت جدید</span>
-            </button>
+              ثبت جدید
+            </Button>
           </div>
 
           {qasLoading ? (
@@ -542,17 +490,15 @@ export default function Knowledge() {
                   <div className="flex gap-1 items-start justify-end mr-2 shrink-0">
                     <button
                       onClick={() => handleEditQA(qaItem)}
-                      className="p-1 px-1.5 hover:bg-slate-100 rounded text-slate-450 hover:text-slate-800 transition cursor-pointer"
-                      title="ویرایش"
+                      className="p-1 hover:bg-slate-100 rounded text-slate-400 hover:text-slate-800 transition cursor-pointer"
                     >
-                      <Edit2 className="w-3.5 h-3.5" />
+                      <Edit02 className="w-3.5 h-3.5" />
                     </button>
                     <button
                       onClick={() => handleDeleteQA(qaItem.id)}
-                      className="p-1 px-1.5 hover:bg-rose-50 rounded text-slate-450 hover:text-rose-650 transition cursor-pointer"
-                      title="حذف"
+                      className="p-1 hover:bg-red-50 rounded text-slate-400 hover:text-red-600 transition cursor-pointer"
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash01 className="w-3.5 h-3.5" />
                     </button>
                   </div>
                 </div>
@@ -573,35 +519,29 @@ export default function Knowledge() {
             title={editingQA ? 'ویرایش پرسش و پاسخ متداول' : 'ثبت پرسش و پاسخ متداول جدید'}
           >
             <form onSubmit={handleAddQASubmit} className="space-y-4 text-right" dir="rtl">
-              <div className="space-y-1 text-right">
-                <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-widest text-right">متن پرسش فرضی کاربر</label>
-                <input
-                  type="text"
-                  value={qaQuestion}
-                  onChange={(e) => setQaQuestion(e.target.value)}
-                  placeholder="مثلا: آیا شعبه فیزیکی در غرب تهران دارید؟"
-                  className="w-full h-11 px-3 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold outline-none text-right"
-                  required
-                />
-              </div>
-              <div className="space-y-1 text-right">
-                <label className="block text-[10px] font-bold text-slate-450 uppercase tracking-widest text-right">پاسخ متناسب دستیار هوشمند</label>
-                <textarea
-                  value={qaAnswer}
-                  onChange={(e) => setQaAnswer(e.target.value)}
-                  rows={4}
-                  placeholder="مثلا: بله! پرتال اصلی شعبه غرب ما واقع در فلکه دوم صادقیه آماده خدمات است."
-                  className="w-full p-3 bg-slate-50 border border-slate-200 rounded-lg text-xs font-semibold outline-none resize-none leading-relaxed text-right"
-                  required
-                />
-              </div>
-              <button
+              <Input
+                label="متن پرسش فرضی کاربر"
+                value={qaQuestion}
+                onChange={e => setQaQuestion(e.target.value)}
+                placeholder="مثلا: آیا شعبه فیزیکی در غرب تهران دارید؟"
+                required
+              />
+              <Textarea
+                label="پاسخ متناسب دستیار هوشمند"
+                value={qaAnswer}
+                onChange={e => setQaAnswer(e.target.value)}
+                rows={4}
+                placeholder="مثلا: بله! شعبه غرب ما واقع در صادقیه آماده خدمات است."
+                required
+              />
+              <Button
                 type="submit"
-                disabled={savingQA || !qaQuestion.trim() || !qaAnswer.trim()}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold h-11 rounded-xl shadow-md transition text-xs active-scale flex items-center justify-center cursor-pointer"
+                fullWidth
+                loading={savingQA}
+                disabled={!qaQuestion.trim() || !qaAnswer.trim()}
               >
-                {savingQA ? <RefreshCw className="w-4 h-4 animate-spin" /> : 'ثبت و پیوند قطعی پرسش و پاسخ'}
-              </button>
+                ثبت و پیوند پرسش و پاسخ
+              </Button>
             </form>
           </BottomDrawer>
         </div>

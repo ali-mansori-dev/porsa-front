@@ -9,6 +9,9 @@ export default defineConfig(() => {
     resolve: {
       alias: {
         '@': path.resolve(__dirname, '.'),
+        // @untitled-ui/icons-react ESM build imports @babel/runtime/helpers/esm/*
+        // which is not in @babel/runtime v8's exports map. Alias directly to the files.
+        '@babel/runtime/helpers/esm': path.resolve(__dirname, 'node_modules/@babel/runtime/helpers/esm'),
       },
     },
     server: {

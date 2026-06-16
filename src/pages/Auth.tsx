@@ -1,119 +1,103 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { Bot, ArrowLeft, RefreshCw, Key, Landmark, AlertTriangle, Sparkles } from 'lucide-react';
+import {
+  ArrowLeft,
+  AlertTriangle,
+  RefreshCw01,
+} from '@untitled-ui/icons-react';
+import { Bot, Sparkles } from 'lucide-react';
 import { api } from '../services/api';
+import { Button } from '../components/ui';
+
+function GoogleIcon() {
+  return (
+    <svg className="w-5 h-5" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+      <path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/>
+      <path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/>
+      <path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/>
+      <path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/>
+    </svg>
+  );
+}
 
 export default function Auth() {
   const navigate = useNavigate();
 
-  // Form step: 'phone' | 'otp'
   const [step, setStep] = useState<'phone' | 'otp'>('phone');
-  
   const [phone, setPhone] = useState('');
   const [phoneError, setPhoneError] = useState('');
   const [otpCodes, setOtpCodes] = useState<string[]>(Array(6).fill(''));
   const [otpError, setOtpError] = useState('');
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  // OTP Countdown timer
-  const [countdown, setCountdown] = useState(120); // 2 minutes
+  const [isGoogleLoading, setIsGoogleLoading] = useState(false);
+  const [countdown, setCountdown] = useState(120);
   const [timerActive, setTimerActive] = useState(false);
 
-  // References for OTP fields auto-focus
   const otpRefs = useRef<(HTMLInputElement | null)[]>([]);
 
   useEffect(() => {
-    let timerInterval: any = null;
+    let id: ReturnType<typeof setInterval>;
     if (timerActive && countdown > 0) {
-      timerInterval = setInterval(() => {
-        setCountdown((prev) => prev - 1);
-      }, 1000);
+      id = setInterval(() => setCountdown(p => p - 1), 1000);
     } else if (countdown === 0) {
       setTimerActive(false);
-      clearInterval(timerInterval);
     }
-    return () => clearInterval(timerInterval);
+    return () => clearInterval(id);
   }, [timerActive, countdown]);
 
   const validatePhone = (num: string) => {
-    // Iranian format regex: /^(\+98|0)9[0-9]{9}$/
-    const regex = /^(\+98|0)9[0-9]{9}$/;
-    if (!num) {
-      return 'شماره همراه برای تماس کسب‌وکار الزامی است.';
-    }
-    if (!regex.test(num)) {
-      return 'شماره همراه وارد شده صحیح نیست. (نمونه: ۰۹۱۲۳۴۵۶۷۸۹)';
-    }
+    if (!num) return 'شماره همراه الزامی است.';
+    if (!/^(\+98|0)9[0-9]{9}$/.test(num)) return 'شماره همراه وارد شده صحیح نیست. (نمونه: ۰۹۱۲۳۴۵۶۷۸۹)';
     return '';
   };
 
   const handlePhoneSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setPhoneError('');
-    const error = validatePhone(phone);
-    if (error) {
-      setPhoneError(error);
-      return;
-    }
-
+    const err = validatePhone(phone);
+    if (err) { setPhoneError(err); return; }
     setIsSubmitting(true);
     try {
       await api.auth.sendOtp(phone);
       setStep('otp');
       setCountdown(120);
       setTimerActive(true);
-      setOtpError('');
-      // Focus first OTP field, short delay for React rendering sheet
-      setTimeout(() => {
-        otpRefs.current[0]?.focus();
-      }, 150);
+      setTimeout(() => otpRefs.current[0]?.focus(), 150);
     } catch (err: any) {
-      setPhoneError(err?.message || 'خطا در ارسال پیامک فعال‌سازی. دوباره تلاش کنید.');
+      setPhoneError(err?.message || 'خطا در ارسال پیامک. دوباره تلاش کنید.');
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleOtpChange = (val: string, index: number) => {
-    // Only permit digits
+  const handleOtpChange = (val: string, idx: number) => {
     if (val && !/^[0-9]$/.test(val)) return;
-
-    const newCodes = [...otpCodes];
-    newCodes[index] = val;
-    setOtpCodes(newCodes);
+    const codes = [...otpCodes];
+    codes[idx] = val;
+    setOtpCodes(codes);
     setOtpError('');
-
-    // Auto-advance
-    if (val !== '' && index < 5) {
-      otpRefs.current[index + 1]?.focus();
-    }
+    if (val && idx < 5) otpRefs.current[idx + 1]?.focus();
   };
 
-  const handleOtpKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, index: number) => {
-    if (e.key === 'Backspace') {
-      const newCodes = [...otpCodes];
-      
-      if (newCodes[index] === '' && index > 0) {
-        // If current box is already empty, go back and wipe previous
-        newCodes[index - 1] = '';
-        setOtpCodes(newCodes);
-        otpRefs.current[index - 1]?.focus();
-      } else {
-        // Just empty current box
-        newCodes[index] = '';
-        setOtpCodes(newCodes);
-      }
-      setOtpError('');
+  const handleOtpKeyDown = (e: React.KeyboardEvent<HTMLInputElement>, idx: number) => {
+    if (e.key !== 'Backspace') return;
+    const codes = [...otpCodes];
+    if (codes[idx] === '' && idx > 0) {
+      codes[idx - 1] = '';
+      setOtpCodes(codes);
+      otpRefs.current[idx - 1]?.focus();
+    } else {
+      codes[idx] = '';
+      setOtpCodes(codes);
     }
+    setOtpError('');
   };
 
   const handleOtpPaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
     e.preventDefault();
-    const pastedData = e.clipboardData.getData('text').trim();
-    if (!/^\d{6}$/.test(pastedData)) return;
-
-    const arr = pastedData.split('');
-    setOtpCodes(arr);
+    const pasted = e.clipboardData.getData('text').trim();
+    if (!/^\d{6}$/.test(pasted)) return;
+    setOtpCodes(pasted.split(''));
     otpRefs.current[5]?.focus();
   };
 
@@ -121,23 +105,13 @@ export default function Auth() {
     e.preventDefault();
     setOtpError('');
     const fullOtp = otpCodes.join('');
-    if (fullOtp.length < 6) {
-      setOtpError('لطفاً هر ۶ رقم کد تایید را وارد نمایید.');
-      return;
-    }
-
+    if (fullOtp.length < 6) { setOtpError('لطفاً هر ۶ رقم کد تایید را وارد نمایید.'); return; }
     setIsSubmitting(true);
     try {
-      const response = await api.auth.verifyOtp(phone, fullOtp);
-      // Success triggers navigation
-      if (response.existing) {
-        navigate('/dashboard');
-      } else {
-        // Fresh sign up goes to Business onboarding questionnaire
-        navigate('/onboarding');
-      }
+      const res = await api.auth.verifyOtp(phone, fullOtp);
+      navigate(res.existing ? '/dashboard' : '/onboarding');
     } catch (err: any) {
-      setOtpError(err?.message || 'کد فعال‌سازی نامعتبر است. لطفاً ارقام را بررسی کنید.');
+      setOtpError(err?.message || 'کد فعال‌سازی نامعتبر است.');
     } finally {
       setIsSubmitting(false);
     }
@@ -152,12 +126,20 @@ export default function Auth() {
     try {
       await api.auth.sendOtp(phone);
       setTimeout(() => otpRefs.current[0]?.focus(), 100);
-    } catch (err: any) {
-      setOtpError('ارسال مجدد با خطا مواجه شد. لطفاً دوباره درخواست کنید.');
+    } catch {
+      setOtpError('ارسال مجدد با خطا مواجه شد.');
     }
   };
 
-  // Safe guest bypass trigger
+  const handleGoogleSignIn = async () => {
+    setIsGoogleLoading(true);
+    await new Promise(r => setTimeout(r, 1800));
+    localStorage.setItem('access_token', 'jwt_google_' + Math.random().toString(36).slice(2, 10));
+    const hasOnboarding = localStorage.getItem('onboarding_completed') === 'true';
+    setIsGoogleLoading(false);
+    navigate(hasOnboarding ? '/dashboard' : '/onboarding');
+  };
+
   const handleDemoBypass = () => {
     setPhone('09123456789');
     setPhoneError('');
@@ -165,148 +147,139 @@ export default function Auth() {
     setOtpCodes(['1', '1', '1', '1', '1', '1']);
     setCountdown(120);
     setTimerActive(true);
-    setTimeout(() => {
-      otpRefs.current[5]?.focus();
-    }, 150);
+    setTimeout(() => otpRefs.current[5]?.focus(), 150);
   };
 
-  const formatTime = (seconds: number) => {
-    const mins = Math.floor(seconds / 60);
-    const secs = seconds % 60;
-    return `${mins}:${secs < 10 ? '0' : ''}${secs}`;
-  };
+  const formatTime = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
 
   return (
-    <div className="min-h-screen bg-slate-50 flex flex-col items-center justify-center font-sans">
-      {/* Container wrapper: full mobile height/width or standard card on desktop */}
-      <div className="w-full max-w-md bg-white sm:rounded-2xl sm:shadow-xl border border-slate-100 flex flex-col min-h-screen sm:min-h-0 py-8 px-6 sm:px-10 justify-between sm:justify-start">
-        
-        {/* Top Header Card */}
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-blue-50/30 to-slate-100 flex flex-col items-center justify-center">
+      <div className="w-full max-w-md bg-white sm:rounded-2xl sm:shadow-xl border border-slate-100 flex flex-col min-h-screen sm:min-h-0 py-8 px-6 sm:px-10 justify-between sm:justify-start gap-8">
+        {/* ── Header ── */}
         <div>
           <div className="flex justify-between items-center mb-6">
-            <button
-              onClick={() => {
-                if (step === 'otp') {
-                  setStep('phone');
-                } else {
-                  navigate('/');
-                }
-              }}
-              className="p-2 rounded-lg hover:bg-slate-100 text-slate-550 transition flex items-center gap-1 text-xs font-semibold"
+            <Button
+              variant="ghost"
+              size="sm"
+              leftIcon={<ArrowLeft className="w-4 h-4" />}
+              onClick={() => step === 'otp' ? setStep('phone') : navigate('/')}
             >
-              <ArrowLeft className="w-4 h-4 ml-1" />
-              <span>بازگشت</span>
-            </button>
+              بازگشت
+            </Button>
             <div className="flex items-center gap-1.5">
               <div className="w-6 h-6 rounded-full bg-blue-600 flex items-center justify-center gap-0.5 shadow-md shadow-blue-500/15 relative shrink-0">
-                <div className="absolute bottom-0.5 right-0 w-1.5 h-1.5 bg-blue-600 rounded-bl-full transform translate-x-0.5 translate-y-0.5"></div>
-                <span className="w-0.5 h-0.5 rounded-full bg-white"></span>
-                <span className="w-0.5 h-0.5 rounded-full bg-white"></span>
-                <span className="w-0.5 h-0.5 rounded-full bg-white"></span>
+                <div className="absolute bottom-0.5 right-0 w-1.5 h-1.5 bg-blue-600 rounded-bl-full transform translate-x-0.5 translate-y-0.5" />
+                <span className="w-0.5 h-0.5 rounded-full bg-white" />
+                <span className="w-0.5 h-0.5 rounded-full bg-white" />
+                <span className="w-0.5 h-0.5 rounded-full bg-white" />
               </div>
               <span className="font-extrabold text-xs tracking-wider text-slate-800 uppercase">پرسا</span>
             </div>
           </div>
 
           <div className="text-center space-y-2 mb-8">
+            <div className="w-12 h-12 bg-blue-50 rounded-2xl flex items-center justify-center mx-auto mb-4">
+              <Bot className="w-6 h-6 text-blue-600" />
+            </div>
             <h1 className="text-2xl font-extrabold text-slate-900 tracking-tight">
-              {step === 'phone' ? 'ورود یا عضویت سریع' : 'بررسی و تایید کد امنیتی'}
+              {step === 'phone' ? 'ورود یا عضویت سریع' : 'بررسی کد امنیتی'}
             </h1>
             <p className="text-xs text-slate-400 leading-relaxed">
-              {step === 'phone' 
-                ? 'شماره همراه خود را وارد کنید. در صورتی که دفعه نخست است، جهت جمع‌آوری مشخصات به صفحه تنظیمات اولیه هدایت خواهید شد.' 
-                : `ما یک پیامک حاوی کد تایید ۶ رقمی به شماره ${phone} ارسال کردیم.`}
+              {step === 'phone'
+                ? 'برای ساخت دستیار هوشمند کسب‌وکار خود ثبت‌نام کنید'
+                : `کد ۶ رقمی ارسال شده به ${phone} را وارد کنید`}
             </p>
           </div>
 
-          {/* STEP 1: PHONE FORM */}
+          {/* ── Phone step ── */}
           {step === 'phone' && (
-            <form onSubmit={handlePhoneSubmit} className="space-y-5">
-              <div className="space-y-1.5">
-                <label className="block text-xs font-bold text-slate-505 uppercase tracking-wide text-right">
-                  شماره همراه کسب‌وکار
-                </label>
-                <div className="relative" dir="ltr">
-                  {/* Flag integration inside input */}
-                  <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 border-r border-slate-200 pr-2 pointer-events-none">
-                    <span className="text-sm">🇮🇷</span>
-                    <span className="text-xs font-bold text-slate-400">+98</span>
-                  </div>
-                  <input
-                    type="tel"
-                    inputMode="tel"
-                    id="phone"
-                    value={phone}
-                    onChange={(e) => {
-                      setPhone(e.target.value);
-                      setPhoneError('');
-                    }}
-                    placeholder="09123456789"
-                    className="w-full h-12 pl-16 pr-3 bg-slate-50 hover:bg-white focus:bg-white border border-slate-250 focus:border-blue-500 rounded-xl text-sm font-semibold tracking-wide transition outline-none text-left"
-                    autoFocus
-                  />
-                </div>
-                {phoneError && (
-                  <p className="text-rose-600 text-xs font-medium mt-1 flex items-center gap-1">
-                    <AlertTriangle className="w-3.5 h-3.5" />
-                    <span>{phoneError}</span>
-                  </p>
-                )}
+            <div className="space-y-4">
+              <Button
+                variant="secondary"
+                size="xl"
+                fullWidth
+                loading={isGoogleLoading}
+                leftIcon={!isGoogleLoading ? <GoogleIcon /> : undefined}
+                onClick={handleGoogleSignIn}
+              >
+                {isGoogleLoading ? 'در حال اتصال...' : 'ورود با حساب گوگل'}
+              </Button>
+
+              <div className="flex items-center gap-3 my-2">
+                <div className="flex-1 h-px bg-slate-200" />
+                <span className="text-xs text-slate-400 font-semibold">یا با شماره همراه</span>
+                <div className="flex-1 h-px bg-slate-200" />
               </div>
 
-              <button
-                type="submit"
-                id="phone-submit"
-                disabled={isSubmitting}
-                className="w-full h-12 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold rounded-xl active-scale flex items-center justify-center gap-2 text-sm shadow-md transition cursor-pointer"
-              >
-                {isSubmitting ? (
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                ) : (
-                  <span>ارسال کد تایید پیامکی</span>
-                )}
-              </button>
-            </form>
+              <form onSubmit={handlePhoneSubmit} className="space-y-4">
+                <div className="flex flex-col gap-1.5 text-right">
+                  <label className="text-sm font-medium text-slate-700">شماره همراه کسب‌وکار</label>
+                  <div className="relative" dir="ltr">
+                    <div className="absolute left-3 top-1/2 -translate-y-1/2 flex items-center gap-1 border-r border-slate-200 pr-2 pointer-events-none">
+                      <span className="text-sm">🇮🇷</span>
+                      <span className="text-xs font-bold text-slate-400">+98</span>
+                    </div>
+                    <input
+                      type="tel"
+                      inputMode="tel"
+                      value={phone}
+                      onChange={e => { setPhone(e.target.value); setPhoneError(''); }}
+                      placeholder="09123456789"
+                      autoFocus
+                      className="w-full h-11 pl-16 pr-3 bg-white border border-slate-300 rounded-lg text-sm font-semibold tracking-wide outline-none shadow-sm transition focus:border-blue-500 focus:ring-2 focus:ring-blue-200 text-left"
+                    />
+                  </div>
+                  {phoneError && (
+                    <p className="text-red-600 text-xs flex items-center gap-1">
+                      <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                      {phoneError}
+                    </p>
+                  )}
+                </div>
+
+                <Button type="submit" fullWidth size="xl" loading={isSubmitting}>
+                  ارسال کد تایید پیامکی
+                </Button>
+              </form>
+            </div>
           )}
 
-          {/* STEP 2: OTP FORM */}
+          {/* ── OTP step ── */}
           {step === 'otp' && (
             <form onSubmit={handleOtpSubmit} className="space-y-6">
               <div className="space-y-2">
-                <label className="block text-xs font-bold text-slate-505 uppercase tracking-wide text-center">
+                <label className="block text-xs font-bold text-slate-500 uppercase tracking-wide text-center">
                   کد تایید ۶ رقمی
                 </label>
-                {/* 6 Digit Box spread */}
                 <div className="flex gap-2 justify-center" dir="ltr">
                   {otpCodes.map((digit, i) => (
                     <input
                       key={i}
-                      ref={(el) => (otpRefs.current[i] = el)}
+                      ref={el => { otpRefs.current[i] = el; }}
                       type="text"
                       inputMode="numeric"
                       pattern="[0-9]*"
                       maxLength={1}
                       value={digit}
-                      onChange={(e) => handleOtpChange(e.target.value, i)}
-                      onKeyDown={(e) => handleOtpKeyDown(e, i)}
+                      onChange={e => handleOtpChange(e.target.value, i)}
+                      onKeyDown={e => handleOtpKeyDown(e, i)}
                       onPaste={handleOtpPaste}
-                      className="w-12 h-12 sm:w-14 sm:h-14 font-mono text-xl font-bold text-center bg-slate-50 focus:bg-white border-2 border-slate-250 focus:border-blue-500 rounded-xl focus:ring-1 focus:ring-blue-100 outline-none transition"
+                      className="w-12 h-12 sm:w-14 sm:h-14 font-mono text-xl font-bold text-center bg-slate-50 focus:bg-white border-2 border-slate-200 focus:border-blue-500 rounded-xl outline-none transition shadow-sm"
                     />
                   ))}
                 </div>
                 {otpError && (
-                  <p className="text-rose-600 text-xs font-semibold text-center mt-2 flex items-center justify-center gap-1">
-                    <AlertTriangle className="w-3.5 h-3.5" />
-                    <span>{otpError}</span>
+                  <p className="text-red-600 text-xs text-center flex items-center justify-center gap-1">
+                    <AlertTriangle className="w-3.5 h-3.5 shrink-0" />
+                    {otpError}
                   </p>
                 )}
               </div>
 
-              {/* Timer metrics & Resend */}
               <div className="text-center text-xs">
                 {countdown > 0 ? (
                   <p className="text-slate-400">
-                    امکان ارسال مجدد کد تا{' '}
+                    امکان ارسال مجدد تا{' '}
                     <span className="font-mono font-bold text-slate-700">{formatTime(countdown)}</span>
                   </p>
                 ) : (
@@ -315,45 +288,35 @@ export default function Auth() {
                     onClick={handleResend}
                     className="text-blue-600 font-bold hover:underline"
                   >
-                    ارسال پیامک مجدد کد فعال‌سازی
+                    ارسال مجدد کد
                   </button>
                 )}
               </div>
 
-              <button
-                type="submit"
-                id="otp-submit"
-                disabled={isSubmitting}
-                className="w-full h-12 bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white font-bold rounded-xl active-scale flex items-center justify-center gap-2 text-sm shadow-md transition cursor-pointer"
-              >
-                {isSubmitting ? (
-                  <RefreshCw className="w-4 h-4 animate-spin" />
-                ) : (
-                  <span>تایید کد و ورود به پنل</span>
-                )}
-              </button>
+              <Button type="submit" fullWidth size="xl" loading={isSubmitting}>
+                تایید کد و ورود به پنل
+              </Button>
             </form>
           )}
         </div>
 
-        {/* Guest bypassed sandbox helper info card */}
-        <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 mt-8 text-center space-y-2">
+        {/* ── Demo helper ── */}
+        <div className="bg-blue-50 border border-blue-100 rounded-xl p-3 text-center space-y-2">
           <div className="flex items-center justify-center gap-1 text-[11px] font-bold text-blue-700 uppercase tracking-widest">
             <Sparkles className="w-3.5 h-3.5" />
             <span>حالت آزمایشی توسعه‌دهندگان</span>
           </div>
-          <p className="text-[10px] text-slate-500 leading-relaxed font-normal">
-            تست و بررسی سریع پنل بدون نیاز به پیامک واقعی! برای تکمیل خودکار اطلاعات و مشاهده قالب نمونه آکادمی آیلتس روی دکمه زیر کلیک کنید. کد تایید تستی <b>111111</b> است.
+          <p className="text-[10px] text-slate-500 leading-relaxed">
+            کد تایید تستی <b>111111</b> است.
           </p>
           <button
             type="button"
             onClick={handleDemoBypass}
-            className="text-[11px] text-blue-600 hover:text-blue-700 font-extrabold tracking-wide hover:underline focus:outline-none"
+            className="text-[11px] text-blue-600 font-extrabold hover:underline"
           >
-            ورود سریع به پنل دمو و آزمایشی ←
+            ورود سریع به پنل دمو ←
           </button>
         </div>
-
       </div>
     </div>
   );
