@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { getToken } from '../services/http';
 import {
   GraduationHat01,
   Tool01,
@@ -73,7 +74,7 @@ export default function Onboarding() {
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
-    if (!localStorage.getItem('access_token')) navigate('/auth');
+    if (!getToken()) navigate('/auth');
   }, [navigate]);
 
   const getEffectiveField = () => customField.trim() || selectedField;

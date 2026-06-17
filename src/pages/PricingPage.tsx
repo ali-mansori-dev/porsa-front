@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { getToken } from '../services/http';
 import { motion } from 'motion/react';
 import {
   Check,
@@ -123,8 +124,7 @@ export default function PricingPage() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    const token = localStorage.getItem('access_token');
-    setIsLoggedIn(!!token);
+    setIsLoggedIn(!!getToken());
     window.scrollTo(0, 0);
   }, []);
 

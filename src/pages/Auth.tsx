@@ -7,6 +7,7 @@ import {
 } from '@untitled-ui/icons-react';
 import { Bot, Sparkles } from 'lucide-react';
 import { api } from '../services/api';
+import { setToken } from '../services/http';
 import { Button } from '../components/ui';
 
 function GoogleIcon() {
@@ -134,7 +135,9 @@ export default function Auth() {
   const handleGoogleSignIn = async () => {
     setIsGoogleLoading(true);
     await new Promise(r => setTimeout(r, 1800));
-    localStorage.setItem('access_token', 'jwt_google_' + Math.random().toString(36).slice(2, 10));
+    const mockToken = 'jwt_google_' + Math.random().toString(36).slice(2, 10);
+    setToken(mockToken);
+    localStorage.setItem('access_token', mockToken);
     const hasOnboarding = localStorage.getItem('onboarding_completed') === 'true';
     setIsGoogleLoading(false);
     navigate(hasOnboarding ? '/dashboard' : '/onboarding');

@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate, Link } from 'react-router-dom';
+import { getToken } from '../services/http';
 import { motion } from 'motion/react';
 import {
   Menu, X, ArrowLeft, Bot, Sparkles, Zap, Globe2, Clock,
@@ -194,7 +195,7 @@ export default function Landing() {
   const [isLoggedIn, setIsLoggedIn] = useState(false);
 
   useEffect(() => {
-    setIsLoggedIn(!!localStorage.getItem('access_token'));
+    setIsLoggedIn(!!getToken());
   }, []);
 
   const handleCTA = () => navigate(isLoggedIn ? '/dashboard' : '/auth');

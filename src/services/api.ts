@@ -1,31 +1,5 @@
 import { Business, Conversation, KnowledgeDetail, CustomQA, TokenUsage, Message } from '../types';
-
-const BASE_URL = 'http://127.0.0.1:8000';
-
-// ── Auth token helpers ──────────────────────────────────────────────────────
-
-const getToken = (): string | null => localStorage.getItem('access_token');
-
-// ── Core HTTP helper ────────────────────────────────────────────────────────
-
-async function http<T>(path: string, init: RequestInit = {}): Promise<T> {
-  const token = getToken();
-  const res = await fetch(`${BASE_URL}${path}`, {
-    ...init,
-    headers: {
-      'Content-Type': 'application/json',
-      ...(token ? { Authorization: `Bearer ${token}` } : {}),
-      ...(init.headers ?? {}),
-    },
-  });
-
-  if (!res.ok) {
-    const body = await res.json().catch(() => ({}));
-    throw new Error((body as { detail?: string }).detail ?? `HTTP ${res.status}`);
-  }
-  if (res.status === 204) return undefined as T;
-  return res.json() as Promise<T>;
-}
+import http, { setToken, clearToken } from './http';
 
 // ── Backend response shapes ─────────────────────────────────────────────────
 
@@ -67,6 +41,10 @@ const FRONTEND_TO_BACKEND_TYPE: Record<Business['type'], string> = {
   services: 'service',
 };
 
+function toBackendStyle(s: Business['responseStyle']): string {
+  return s === 'technical' ? 'brief' : s;
+}
+
 function adaptBusiness(b: BackendBusiness): Business {
   return {
     id: b.id,
@@ -82,10 +60,6 @@ function adaptBusiness(b: BackendBusiness): Business {
     isActive: true,
     brandColor: '#2563eb',
   };
-}
-
-function toBackendStyle(s: Business['responseStyle']): string {
-  return s === 'technical' ? 'brief' : s;
 }
 
 function adaptEscalation(e: BackendEscalation): Conversation {
@@ -127,7 +101,7 @@ function adaptEscalation(e: BackendEscalation): Conversation {
   };
 }
 
-// ── Seed local token usage (no backend endpoint) ────────────────────────────
+// ── Seed local token usage (no backend endpoint for this) ───────────────────
 
 if (!localStorage.getItem('db_tokens')) {
   const defaultTokens: TokenUsage = {
@@ -144,45 +118,51 @@ if (!localStorage.getItem('db_tokens')) {
 export const api = {
   auth: {
     sendOtp: async (phone: string): Promise<{ success: boolean; message: string }> => {
-      const res = await http<{ detail: string; expires_in: number; dev_code?: string }>(
+      const { data } = await http.post<{ detail: string; expires_in: number; dev_code?: string }>(
         '/auth/request-otp',
-        { method: 'POST', body: JSON.stringify({ phone }) },
+        { phone },
       );
-      return { success: true, message: res.detail };
+      return { success: true, message: data.detail };
     },
 
     verifyOtp: async (phone: string, otp: string): Promise<{ token: string; existing: boolean }> => {
-      const res = await http<{
+      const { data } = await http.post<{
         token: string;
         token_type: string;
         business_id: string | null;
         business_name: string | null;
-      }>('/auth/verify-otp', { method: 'POST', body: JSON.stringify({ phone, code: otp }) });
-      localStorage.setItem('access_token', res.token);
-      return { token: res.token, existing: res.business_id !== null };
+      }>('/auth/verify-otp', { phone, code: otp });
+
+      // Store token in cookie (7-day expiry) and keep localStorage for legacy compat
+      setToken(data.token);
+      localStorage.setItem('access_token', data.token);
+
+      return { token: data.token, existing: data.business_id !== null };
     },
 
     logout: async (): Promise<void> => {
       try {
-        await http('/auth/logout', { method: 'POST' });
+        await http.post('/auth/logout');
       } catch {
-        // ignore — clear token regardless
+        // ignore — clear session regardless
       }
+      clearToken();
       localStorage.removeItem('access_token');
     },
 
     getMe: async () => {
-      return http<{
+      const { data } = await http.get<{
         id: string;
         phone: string;
         business: { id: string; name: string; type: string } | null;
       }>('/auth/me');
+      return data;
     },
   },
 
   business: {
     create: async (data: Partial<Business>): Promise<Business> => {
-      const payload = {
+      const { data: res } = await http.post<BackendBusiness>('/me/business', {
         name: data.name,
         type: FRONTEND_TO_BACKEND_TYPE[data.type ?? 'education'],
         field: data.field,
@@ -190,10 +170,6 @@ export const api = {
         working_hours: data.workingHours,
         welcome_message: data.welcomeMessage,
         response_style: toBackendStyle(data.responseStyle ?? 'friendly'),
-      };
-      const res = await http<BackendBusiness>('/me/business', {
-        method: 'POST',
-        body: JSON.stringify(payload),
       });
       localStorage.setItem('onboarding_completed', 'true');
       return adaptBusiness(res);
@@ -201,8 +177,8 @@ export const api = {
 
     getMe: async (): Promise<Business | null> => {
       try {
-        const res = await http<BackendBusiness>('/me/business');
-        return adaptBusiness(res);
+        const { data } = await http.get<BackendBusiness>('/me/business');
+        return adaptBusiness(data);
       } catch {
         return null;
       }
@@ -217,29 +193,28 @@ export const api = {
       if (updates.workingHours !== undefined) payload.working_hours = updates.workingHours;
       if (updates.welcomeMessage !== undefined) payload.welcome_message = updates.welcomeMessage;
       if (updates.responseStyle !== undefined) payload.response_style = toBackendStyle(updates.responseStyle);
-      const res = await http<BackendBusiness>('/me/business', {
-        method: 'PATCH',
-        body: JSON.stringify(payload),
-      });
-      return adaptBusiness(res);
+
+      const { data } = await http.patch<BackendBusiness>('/me/business', payload);
+      return adaptBusiness(data);
     },
 
     regenerateKey: async (_id: string): Promise<string> => {
-      // No user-facing endpoint — return current key
+      // No user-facing endpoint — return existing key
       const b = await api.business.getMe();
       return b?.apiKey ?? '';
     },
 
     deactivate: async (_id: string): Promise<void> => {
       // No user-facing endpoint — clear session locally
+      clearToken();
       localStorage.removeItem('access_token');
     },
   },
 
   details: {
     getAll: async (): Promise<KnowledgeDetail[]> => {
-      const b = await http<BackendBusiness>('/me/business');
-      return Object.entries(b.details ?? {}).map(([key, value]) => ({
+      const { data } = await http.get<BackendBusiness>('/me/business');
+      return Object.entries(data.details ?? {}).map(([key, value]) => ({
         key,
         value,
         title: key.replace(/_/g, ' '),
@@ -249,71 +224,73 @@ export const api = {
     saveAll: async (items: KnowledgeDetail[]): Promise<KnowledgeDetail[]> => {
       const details: Record<string, string> = {};
       items.forEach(i => { details[i.key] = i.value; });
-      await http('/me/business', { method: 'PATCH', body: JSON.stringify({ details }) });
+      await http.patch('/me/business', { details });
       return items;
     },
 
     add: async (item: KnowledgeDetail): Promise<KnowledgeDetail> => {
-      const b = await http<BackendBusiness>('/me/business');
-      const details = { ...(b.details ?? {}), [item.key]: item.value };
-      await http('/me/business', { method: 'PATCH', body: JSON.stringify({ details }) });
+      const { data } = await http.get<BackendBusiness>('/me/business');
+      const details = { ...(data.details ?? {}), [item.key]: item.value };
+      await http.patch('/me/business', { details });
       return item;
     },
 
     update: async (key: string, value: string): Promise<void> => {
-      const b = await http<BackendBusiness>('/me/business');
-      const details = { ...(b.details ?? {}), [key]: value };
-      await http('/me/business', { method: 'PATCH', body: JSON.stringify({ details }) });
+      const { data } = await http.get<BackendBusiness>('/me/business');
+      const details = { ...(data.details ?? {}), [key]: value };
+      await http.patch('/me/business', { details });
     },
 
     delete: async (key: string): Promise<void> => {
-      const b = await http<BackendBusiness>('/me/business');
-      const details = { ...(b.details ?? {}) };
+      const { data } = await http.get<BackendBusiness>('/me/business');
+      const details = { ...(data.details ?? {}) };
       delete details[key];
-      await http('/me/business', { method: 'PATCH', body: JSON.stringify({ details }) });
+      await http.patch('/me/business', { details });
     },
   },
 
   qas: {
     getAll: async (): Promise<CustomQA[]> => {
-      return http<CustomQA[]>('/me/business/faq');
+      const { data } = await http.get<CustomQA[]>('/me/business/faq');
+      return data;
     },
 
     add: async (qa: Omit<CustomQA, 'id'>): Promise<CustomQA> => {
-      return http<CustomQA>('/me/business/faq', {
-        method: 'POST',
-        body: JSON.stringify({ question: qa.question, answer: qa.answer }),
+      const { data } = await http.post<CustomQA>('/me/business/faq', {
+        question: qa.question,
+        answer: qa.answer,
       });
+      return data;
     },
 
     update: async (id: string, updates: Partial<CustomQA>): Promise<CustomQA> => {
-      // Backend has no per-item PATCH — fetch all, update in memory, PUT back
-      const all = await http<CustomQA[]>('/me/business/faq');
+      // No per-item PATCH — fetch all, update in memory, PUT back
+      const { data: all } = await http.get<CustomQA[]>('/me/business/faq');
       const idx = all.findIndex(q => q.id === id);
       if (idx === -1) throw new Error('آیتم یافت نشد');
       all[idx] = { ...all[idx], ...updates };
-      await http('/me/business/faq', {
-        method: 'PUT',
-        body: JSON.stringify(all.map(q => ({ question: q.question, answer: q.answer }))),
-      });
+      await http.put(
+        '/me/business/faq',
+        all.map(q => ({ question: q.question, answer: q.answer })),
+      );
       return all[idx];
     },
 
     delete: async (id: string): Promise<void> => {
-      await http(`/me/business/faq/${id}`, { method: 'DELETE' });
+      await http.delete(`/me/business/faq/${id}`);
     },
   },
 
   conversations: {
     getAll: async (): Promise<Conversation[]> => {
-      const res = await http<{ items: BackendEscalation[]; total: number }>('/me/escalations');
-      return (res.items ?? []).map(adaptEscalation);
+      const { data } = await http.get<{ items: BackendEscalation[]; total: number }>('/me/escalations');
+      return (data.items ?? []).map(adaptEscalation);
     },
 
     getById: async (id: string): Promise<Conversation | null> => {
       try {
-        const res = await http<{ items: BackendEscalation[] }>('/me/escalations');
-        const found = (res.items ?? []).find(e => e.id === id);
+        const { data } = await http.get<{ items: BackendEscalation[] }>('/me/escalations');
+        const found = (data.items ?? []).find(e => e.id === id);
         return found ? adaptEscalation(found) : null;
       } catch {
         return null;
@@ -327,14 +304,14 @@ export const api = {
     },
 
     addMessage: async (conversationId: string, content: string, _sender: Message['sender'] = 'customer'): Promise<Message> => {
-      const res = await http<BackendEscalation>(`/me/escalations/${conversationId}/answer`, {
-        method: 'POST',
-        body: JSON.stringify({ answer: content }),
-      });
+      const { data } = await http.post<BackendEscalation>(
+        `/me/escalations/${conversationId}/answer`,
+        { answer: content },
+      );
       return {
-        id: `${res.id}_a`,
+        id: `${data.id}_a`,
         sender: 'ai',
-        content: res.answer ?? content,
+        content: data.answer ?? content,
         timestamp: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }),
       };
     },
