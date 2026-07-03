@@ -1,6 +1,7 @@
 import React, { useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { X } from 'lucide-react';
+import { XClose } from '@untitled-ui/icons-react';
+import { Button } from '../ui';
 
 interface BottomDrawerProps {
   isOpen: boolean;
@@ -66,13 +67,14 @@ export default function BottomDrawer({
                   <h3 className="font-semibold text-lg text-slate-900 leading-snug">{title}</h3>
                   {subtitle && <p className="text-xs text-slate-400 mt-0.5">{subtitle}</p>}
                 </div>
-                <button
-                  id="drawer-close"
+                <Button
+                  variant="ghost"
+                  size="sm"
                   onClick={onClose}
-                  className="p-1.5 rounded-full hover:bg-slate-100 text-slate-400 hover:text-slate-700 transition"
+                  className="p-1.5 rounded-full"
                 >
-                  <X className="w-5 h-5" />
-                </button>
+                  <XClose className="w-5 h-5" />
+                </Button>
               </div>
 
               {/* Scrollable Content */}

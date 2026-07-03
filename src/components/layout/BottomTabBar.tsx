@@ -1,6 +1,7 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
-import { Home, MessageSquareCode, BrainCircuit, Landmark, Settings } from 'lucide-react';
+import { Home01, Bank, Settings01 } from '@untitled-ui/icons-react';
+import { MessageSquareCode, BrainCircuit } from 'lucide-react';
 import TokenBar from '../common/TokenBar';
 import { TokenUsage } from '../../types';
 
@@ -13,11 +14,11 @@ export default function BottomTabBar({ tokenUsage }: BottomTabBarProps) {
   const path = location.pathname;
 
   const navItems = [
-    { label: 'خانه', path: '/dashboard', icon: Home },
+    { label: 'خانه', path: '/dashboard', icon: Home01 },
     { label: 'چت‌ها', path: '/dashboard/conversations', icon: MessageSquareCode },
     { label: 'پایگاه دانش', path: '/dashboard/knowledge', icon: BrainCircuit },
-    { label: 'توکن‌ها', path: '/dashboard/tokens', icon: Landmark },
-    { label: 'تنظیمات', path: '/dashboard/settings', icon: Settings },
+    { label: 'توکن‌ها', path: '/dashboard/tokens', icon: Bank },
+    { label: 'تنظیمات', path: '/dashboard/settings', icon: Settings01 },
   ];
 
   const isActive = (itemPath: string) => {

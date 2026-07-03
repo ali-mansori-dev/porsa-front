@@ -1,17 +1,17 @@
 import React from 'react';
 import { Link, useLocation } from 'react-router-dom';
 import {
-  Home,
-  MessageSquareCode,
-  BrainCircuit,
-  Landmark,
-  Settings,
-  LogOut,
-  GraduationCap,
-  Wrench,
-  ShoppingBag
-} from 'lucide-react';
+  Home01,
+  Bank,
+  Settings01,
+  LogOut01,
+  GraduationHat01,
+  Tool01,
+  ShoppingBag01
+} from '@untitled-ui/icons-react';
+import { MessageSquareCode, BrainCircuit } from 'lucide-react';
 import TokenBar from '../common/TokenBar';
+import { Button } from '../ui';
 import { Business, TokenUsage } from '../../types';
 
 interface SidebarProps {
@@ -25,11 +25,11 @@ export default function Sidebar({ business, tokenUsage, onLogout }: SidebarProps
   const path = location.pathname;
 
   const navItems = [
-    { label: 'داشبورد اصلی', path: '/dashboard', icon: Home },
+    { label: 'داشبورد اصلی', path: '/dashboard', icon: Home01 },
     { label: 'مکالمات و چت‌ها', path: '/dashboard/conversations', icon: MessageSquareCode },
     { label: 'پایگاه دانش', path: '/dashboard/knowledge', icon: BrainCircuit },
-    { label: 'مدیریت توکن و مالی', path: '/dashboard/tokens', icon: Landmark },
-    { label: 'تنظیمات سیستم', path: '/dashboard/settings', icon: Settings },
+    { label: 'مدیریت توکن و مالی', path: '/dashboard/tokens', icon: Bank },
+    { label: 'تنظیمات سیستم', path: '/dashboard/settings', icon: Settings01 },
   ];
 
   const isActive = (itemPath: string) => {
@@ -41,9 +41,9 @@ export default function Sidebar({ business, tokenUsage, onLogout }: SidebarProps
 
   const getBadgeIcon = (type?: string) => {
     switch (type) {
-      case 'education': return <GraduationCap className="w-4 h-4 text-blue-400 ml-1.5" />;
-      case 'services': return <Wrench className="w-4 h-4 text-emerald-400 ml-1.5" />;
-      case 'retail': return <ShoppingBag className="w-4 h-4 text-amber-400 ml-1.5" />;
+      case 'education': return <GraduationHat01 className="w-4 h-4 text-blue-400 ml-1.5" />;
+      case 'services': return <Tool01 className="w-4 h-4 text-emerald-400 ml-1.5" />;
+      case 'retail': return <ShoppingBag01 className="w-4 h-4 text-amber-400 ml-1.5" />;
       default: return null;
     }
   };
@@ -115,17 +115,19 @@ export default function Sidebar({ business, tokenUsage, onLogout }: SidebarProps
         )}
 
         {/* Exit portal call */}
-        <button
+        <Button
+          variant="ghost"
+          fullWidth
+          leftIcon={<LogOut01 className="w-5 h-5 text-slate-500" />}
           onClick={() => {
             if (confirm('آیا مطمئن هستید که می‌خواهید از حساب خود خارج شوید؟')) {
               onLogout();
             }
           }}
-          className="flex items-center gap-3 w-full px-4 py-2.5 rounded-xl text-sm font-semibold text-slate-400 hover:text-white hover:bg-rose-950/40 hover:border-rose-900/30 border border-transparent transition cursor-pointer justify-start"
+          className="justify-start text-slate-400 hover:text-white hover:bg-rose-950/40 hover:border-rose-900/30 border border-transparent"
         >
-          <LogOut className="w-5 h-5 text-slate-500" />
-          <span>خروج از پنل مدیریت</span>
-        </button>
+          خروج از پنل مدیریت
+        </Button>
       </div>
     </aside>
   );

@@ -1,5 +1,5 @@
 import React from 'react';
-import { Bell, GraduationCap, Wrench, ShoppingBag } from 'lucide-react';
+import { Bell01, GraduationHat01, Tool01, ShoppingBag01 } from '@untitled-ui/icons-react';
 import { Business } from '../../types';
 
 interface TopBarProps {
@@ -10,9 +10,9 @@ interface TopBarProps {
 export default function TopBar({ business, onLogout }: TopBarProps) {
   const getBadgeIcon = (type?: string) => {
     switch (type) {
-      case 'education': return <GraduationCap className="w-3.5 h-3.5" />;
-      case 'services': return <Wrench className="w-3.5 h-3.5" />;
-      case 'retail': return <ShoppingBag className="w-3.5 h-3.5" />;
+      case 'education': return <GraduationHat01 className="w-3.5 h-3.5" />;
+      case 'services': return <Tool01 className="w-3.5 h-3.5" />;
+      case 'retail': return <ShoppingBag01 className="w-3.5 h-3.5" />;
       default: return null;
     }
   };
@@ -50,7 +50,7 @@ export default function TopBar({ business, onLogout }: TopBarProps) {
           onClick={() => alert('اعلان‌ها به‌زودی فعال خواهند شد! همگام‌سازی از طریق وب‌سوکت.')}
           className="relative p-2 rounded-xl text-slate-500 active:bg-slate-50 focus:outline-none"
         >
-          <Bell className="w-5 h-5 text-slate-600" />
+          <Bell01 className="w-5 h-5 text-slate-600" />
           <span className="absolute top-1.5 right-1.5 w-2 h-2 bg-rose-500 rounded-full ring-2 ring-white" />
         </button>
 
